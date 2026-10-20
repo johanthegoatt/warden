@@ -76,6 +76,8 @@ python scripts/watchdog.py install
 
 If cloudflared is installed, the watchdog also opens a Cloudflare quick tunnel to the dashboard, so it can be opened from a phone. A request through the tunnel needs the key from `.warden-token`, which the watchdog creates on first start. The full link with the key is written to `logs/tunnel-link.txt`. The first visit swaps the key in the link for an HttpOnly, Secure, SameSite=Strict cookie and redirects to a clean address. Requests from the machine itself need no key. Cloudflare's headers mark a request as tunnelled even though cloudflared connects from localhost. A quick tunnel gets a new address every time it starts. Set `WARDEN_TUNNEL=0` to turn it off.
 
+While the PC is off, asleep or offline, the cloud sentinel takes over the one fix that matters most. `.github/workflows/sentinel.yml` runs `cloud/sentinel.py` on GitHub Actions every five minutes, reading the same `warden.toml`. It probes every http target and asks Vercel's API which projects are paused, because a paused project's edge cache can keep answering 200. It unpauses each paused project once, even when several domains share it, and counts a fix only when Vercel reports the project running and a fresh probe passes. A run that leaves anything down fails, and GitHub emails the repo owner. It needs a Vercel access token in the repo secret `VERCEL_TOKEN`. Without one, the run only reports. GitHub runs schedules on a best-effort basis, so a run can start a few minutes late.
+
 To watch a full cycle without touching anything real, run the demo. It starts two fake targets, breaks them three different ways and writes the reports below:
 
 ```bash
