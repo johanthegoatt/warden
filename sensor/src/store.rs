@@ -28,12 +28,13 @@ pub fn sync_targets(conn: &mut Connection, targets: &[Target]) -> rusqlite::Resu
             params![keep],
         )?;
         let mut up = tx.prepare(&format!(
-            "INSERT INTO targets (name, kind, endpoint, expected_status, latency_budget_ms, depends_on, stateless, restart, rollback, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, {NOW})
+            "INSERT INTO targets (name, kind, endpoint, expected_status, latency_budget_ms, depends_on, stateless, restart, rollback, max_age_secs, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, {NOW})
              ON CONFLICT(name) DO UPDATE SET kind = excluded.kind, endpoint = excluded.endpoint,
                expected_status = excluded.expected_status, latency_budget_ms = excluded.latency_budget_ms,
                depends_on = excluded.depends_on, stateless = excluded.stateless,
-               restart = excluded.restart, rollback = excluded.rollback, updated_at = excluded.updated_at"
+               restart = excluded.restart, rollback = excluded.rollback,
+               max_age_secs = excluded.max_age_secs, updated_at = excluded.updated_at"
         ))?;
         for t in targets.iter().filter(|t| t.enabled) {
             up.execute(params![
@@ -46,6 +47,7 @@ pub fn sync_targets(conn: &mut Connection, targets: &[Target]) -> rusqlite::Resu
                 t.stateless as i64,
                 t.restart_json(),
                 t.rollback,
+                t.max_age_secs.map(|s| s as i64),
             ])?;
         }
     }

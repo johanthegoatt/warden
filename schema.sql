@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS targets (
     stateless         INTEGER NOT NULL DEFAULT 0 CHECK (stateless IN (0, 1)),
     restart           TEXT,
     rollback          TEXT,
+    max_age_secs      INTEGER,
     updated_at        TEXT NOT NULL
 );
 
