@@ -58,7 +58,8 @@ def render(ctx: dict, transitions: list, evidence: list) -> str:
 
     lines += ["", "## What was done", ""]
     why = decide.get("why", "")
-    lines.append(f"{why[:1].upper()}{why[1:]}." if why else "Nothing.")
+    starts_with_name = why.startswith(ctx["target"].name)
+    lines.append(f"{why if starts_with_name else why[:1].upper() + why[1:]}." if why else "Nothing.")
     if act.get("result"):
         lines += ["", f"Result: {act['result']}."]
     if act.get("rollback_plan"):

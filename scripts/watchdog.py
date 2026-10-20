@@ -126,7 +126,7 @@ def run() -> int:
     children = [
         Child("sensor", [str(exe), "run", "--config", str(ROOT / "warden.toml")], ROOT),
         Child("brain", [sys.executable, "-m", "warden_brain", "--model", os.environ.get("WARDEN_MODEL", "none"),
-                        "--interval", "10", "--reports", str(ROOT / "incidents")], ROOT / "brain"),
+                        "--interval", "10", "--live", "--reports", str(ROOT / "incidents")], ROOT / "brain"),
     ]
     log("watchdog", f"watchdog {os.getpid()} up; dashboard on http://127.0.0.1:7878")
     try:

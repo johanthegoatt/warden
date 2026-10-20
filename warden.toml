@@ -24,6 +24,9 @@ url = "https://icarus.johanthegoat.xyz/"
 expected_status = 200
 latency_budget_ms = 3000
 rollback = "vercel rollback --scope neonices-projects icarus.johanthegoat.xyz"
+# Unpausing the Vercel project is the one action Warden may take here. The site is
+# not marked stateless, so it waits for Approve on the dashboard.
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_1cg3ogmNSiFMk0LW55SF0Eu8BzKX/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
 
 # Discord POSTs interactions; a GET answering 405 means the function is deployed and running.
 [[target]]

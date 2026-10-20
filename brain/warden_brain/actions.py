@@ -82,7 +82,8 @@ class Executor:
             out = subprocess.run(spec["command"], capture_output=True, text=True, timeout=120)
             if out.returncode != 0:
                 raise RuntimeError(f"exit {out.returncode}: {out.stderr.strip()[:300]}")
-            return f"command exited 0: {out.stdout.strip()[:200]}"
+            tail = out.stdout.strip()[:200]
+            return f"command exited 0: {tail}" if tail else "command exited 0"
         raise ValueError(f"unknown restart spec {spec}")
 
     def collect_diagnostics(self, incident_id: int, target, evidence: list, event_detail: dict) -> str:
