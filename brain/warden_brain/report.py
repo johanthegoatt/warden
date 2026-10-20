@@ -133,7 +133,8 @@ def write(conn, ctx: dict, reports_dir: Path):
     transitions = [dict(r) for r in conn.execute(
         "SELECT ts, state, output FROM transitions WHERE incident_id = ? ORDER BY id", (ctx["incident_id"],)
     )]
-    evidence = store.recent_probes(conn, [ctx["target"].name] + ctx["closure"], minutes=15, limit=40)
+    evidence = store.recent_probes(conn, [ctx["target"].name] + ctx["closure"], minutes=15, limit=40,
+                                   since=ctx.get("since"))
     md = render(ctx, transitions, evidence)
     reports_dir.mkdir(parents=True, exist_ok=True)
     slug = re.sub(r"[^a-z0-9-]+", "-", ctx["target"].name.lower()).strip("-")

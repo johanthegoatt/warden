@@ -102,6 +102,7 @@ class Brain:
                      "wall_ms": 0.0, "cpu_ms": 0.0, "probes": 0, "model_calls": 0},
             "out": {},
             "mode": "live" if self.live else "dry-run",
+            "since": store.evidence_floor(self.conn, event["target"], incident_id),
         }
 
     def _drive(self, ctx: dict, state: str) -> dict:
@@ -230,8 +231,9 @@ class Brain:
 
     def _diagnose(self, ctx: dict):
         target, verdict = ctx["target"], ctx["out"]["verify"]
-        evidence = store.recent_probes(self.conn, [target.name] + ctx["closure"], minutes=15, limit=40)
-        hypothesis = diagnose.rule_hypothesis(verdict, evidence, target)
+        evidence = store.recent_probes(self.conn, [target.name] + ctx["closure"], minutes=15, limit=40,
+                                       since=ctx["since"])
+        hypothesis = diagnose.rule_hypothesis(verdict, evidence, target, ctx["event"]["detail"])
         model_out = None
         if self.model is not None:
             prompt = diagnose.model_prompt(target, ctx["closure"], verdict, evidence)
@@ -266,9 +268,9 @@ class Brain:
         out = {"action": action, "tier": tier, "executed": False, "dry_run": not self.live}
 
         if action == "collect_diagnostics":
-            evidence = store.recent_probes(self.conn, [target.name] + ctx["closure"], minutes=15)
+            evidence = store.recent_probes(self.conn, [target.name] + ctx["closure"], minutes=15, since=ctx["since"])
             path = self.executor.collect_diagnostics(ctx["incident_id"], target, evidence, ctx["event"]["detail"])
-            out.update(executed=True, result=f"diagnostics written to {path}")
+            out.update(executed=True, result=f"diagnostics written to {_relative(path, self.reports_dir)}")
         elif tier == "high":
             out.update(result="recommendation only; high-tier actions are never executed",
                        recommendation=p.get("recommendation"), rollback_plan=p.get("rollback_plan"))
@@ -280,12 +282,13 @@ class Brain:
                         "INSERT INTO approvals (incident_id, action, requested_at) VALUES (?, ?, ?)",
                         (ctx["incident_id"], f"restart {target.name}", store.now_iso()),
                     )
-                    out.update(result="waiting for approval on the dashboard", outcome="awaiting approval")
+                    out.update(result="waiting for approval on the dashboard", outcome="awaiting approval",
+                               summary=f"waiting for approval to restart {target.name}")
                     return out, "awaiting_approval"
                 if decision != "approved":
                     out.update(result=f"approval {decision}; restart not run")
                     out.update(confirmation=self._confirm(ctx, target, attempts=1))
-                    out["outcome"] = _outcome(out)
+                    out["outcome"] = out["summary"] = _outcome(out)
                     return out, "report"
             if self.live:
                 try:
@@ -365,6 +368,13 @@ def _outcome(out: dict) -> str:
     if action == "rollback":
         return f"recommendation written, nothing executed; {state}"
     return f"{action.replace('_', ' ')} done; {state}"
+
+
+def _relative(path, base: Path) -> str:
+    try:
+        return Path(path).resolve().relative_to(base.resolve()).as_posix()
+    except ValueError:
+        return str(path)
 
 
 def _rounded(cost: dict) -> dict:

@@ -40,7 +40,10 @@ class Ollama:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 data = json.load(resp)
         except (urllib.error.URLError, OSError, ValueError) as e:
-            raise ModelUnavailable(f"Ollama at {self.host}: {e}") from e
+            reason = getattr(e, "reason", e)
+            if isinstance(reason, ConnectionRefusedError):
+                reason = "nothing is listening there"
+            raise ModelUnavailable(f"Ollama at {self.host}: {reason}") from e
         return Answer(data.get("response", ""), int(data.get("prompt_eval_count", 0)), int(data.get("eval_count", 0)))
 
 

@@ -81,15 +81,26 @@ def record_probe(conn: sqlite3.Connection, target: str, path: str, result: Any) 
     return int(cur.lastrowid)
 
 
-def recent_probes(conn: sqlite3.Connection, names: list, minutes: float = 15.0, limit: int = 40) -> list:
+def recent_probes(conn: sqlite3.Connection, names: list, minutes: float = 15.0, limit: int = 40,
+                  since: Optional[str] = None) -> list:
     if not names:
         return []
     marks = ",".join("?" for _ in names)
+    floor = max(now_iso(-minutes * 60), since or "")
     rows = conn.execute(
-        f"SELECT * FROM probes WHERE target IN ({marks}) AND ts >= ? ORDER BY id DESC LIMIT ?",
-        (*names, now_iso(-minutes * 60), limit),
+        f"SELECT * FROM probes WHERE target IN ({marks}) AND ts > ? ORDER BY id DESC LIMIT ?",
+        (*names, floor, limit),
     ).fetchall()
     return [dict(r) for r in reversed(rows)]
+
+
+def evidence_floor(conn: sqlite3.Connection, target: str, incident_id: int) -> Optional[str]:
+    """Evidence for an incident starts after the previous incident on the same target closed."""
+    row = conn.execute(
+        "SELECT MAX(closed_at) FROM incidents WHERE target = ? AND id < ? AND closed_at IS NOT NULL",
+        (target, incident_id),
+    ).fetchone()
+    return row[0] if row else None
 
 
 def beat(conn: sqlite3.Connection, component: str, note: dict) -> None:

@@ -107,6 +107,19 @@ class Rule3PipelineIsAStateMachine(Base):
             self.assertTrue(json.loads(t["output"]).get("summary"), f"{t['state']} has no summary")
         self.assertEqual(json.loads(rows[1]["input"])["from"], "detect")
 
+    def test_evidence_stops_at_the_previous_incident(self):
+        self.w.target("site", rollback="vercel rollback site")
+        self.w.failure("site", "target")
+        b = self.w.brain(FakeProber({"site": ERR500}))
+        [first] = b.run_once()
+        first_probe_ids = {r[0] for r in self.w.conn.execute("SELECT id FROM probes")}
+        self.w.failure("site", "probe", culprit="primary probe path", secondary_ok=True)
+        b.prober = FakeProber({"site": UP})
+        [second] = b.run_once()
+        diag = json.loads(self.w.transitions(second["incident_id"])[2]["output"])
+        self.assertFalse(set(diag["evidence"]) & first_probe_ids, "incident 2 cited incident 1's probes")
+        self.assertTrue(diag["hypothesis"]["evidence"])
+
     def test_an_event_is_handled_once(self):
         self.w.target("site")
         self.w.failure("site", "target")

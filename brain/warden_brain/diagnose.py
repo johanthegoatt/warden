@@ -12,7 +12,7 @@ import json
 from typing import Optional
 
 
-def rule_hypothesis(verdict: dict, evidence: list, target) -> dict:
+def rule_hypothesis(verdict: dict, evidence: list, target, event_detail: Optional[dict] = None) -> dict:
     location = verdict["location"]
     culprit = verdict.get("culprit") or target.name
     failing = [p for p in evidence if not p["ok"] and p["target"] == (culprit if location != "probe" else target.name)]
@@ -26,6 +26,9 @@ def rule_hypothesis(verdict: dict, evidence: list, target) -> dict:
             "evidence": cited or [p["id"] for p in evidence if p["target"] == target.name][-5:],
         }
     if location == "probe":
+        ids = (event_detail or {}).get("probe_ids") or {}
+        known = {p["id"] for p in evidence}
+        cited = [ids[k] for k in ("primary", "secondary") if ids.get(k) in known] or cited
         return {
             "component": "probe",
             "cause": "probe path failure",

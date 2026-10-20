@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Warden</title>
+<meta name="description" content="Live state of every watched service, the incident state machine, and the reports Warden wrote.">
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230b1118'/%3E%3Ccircle cx='8' cy='8' r='3.2' fill='%23f2a93b'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the panels</a>
+<header class="bar">
+  <div class="mark"><span class="lamp" aria-hidden="true"></span><span>Warden</span></div>
+  <dl class="readouts" aria-live="polite">
+    <div><dt>Mode</dt><dd id="mode">...</dd></div>
+    <div><dt>Sensor</dt><dd id="sensor-age">...</dd></div>
+    <div><dt>Brain</dt><dd id="brain-age">...</dd></div>
+    <div><dt>Model</dt><dd id="model">...</dd></div>
+  </dl>
+  <button class="ghost" id="theme" type="button" aria-label="Switch colour theme">Theme</button>
+</header>
+<div class="stale" id="stale" hidden role="status"></div>
+
+<main id="main" class="grid">
+  <section class="panel targets" aria-labelledby="h-targets">
+    <header><h2 id="h-targets">Targets</h2><p class="hint" id="targets-hint">Latency of the last 48 primary probes against each budget</p></header>
+    <ol id="targets" class="target-list"><li class="skeleton">Waiting for the sensor's first reading</li></ol>
+  </section>
+
+  <section class="panel graph" aria-labelledby="h-graph">
+    <header><h2 id="h-graph">Dependencies</h2><p class="hint">Arrows point at what a service needs</p></header>
+    <div id="graph" class="graph-box"></div>
+  </section>
+
+  <section class="panel incident" aria-labelledby="h-incident">
+    <header><h2 id="h-incident">Incident</h2><p class="hint" id="incident-hint">detect, verify, diagnose, decide, act, report</p></header>
+    <ol class="rail" id="rail" aria-label="State machine"></ol>
+    <div id="step" class="step"><p class="empty">No incident yet. When the sensor raises one, each step it passes through appears here with what went in and what came out.</p></div>
+  </section>
+
+  <section class="panel approvals" aria-labelledby="h-approvals">
+    <header><h2 id="h-approvals">Waiting on you</h2><p class="hint">Medium-tier actions run only after approval</p></header>
+    <ul id="approvals" class="approval-list"></ul>
+  </section>
+
+  <section class="panel reports" aria-labelledby="h-reports">
+    <header><h2 id="h-reports">Reports</h2><p class="hint" id="cost-line"></p></header>
+    <div class="reports-body">
+      <ul id="report-list" class="report-list"></ul>
+      <article id="reader" class="reader" tabindex="-1" aria-live="polite"><p class="empty">Pick a report to read it here.</p></article>
+    </div>
+  </section>
+
+  <section class="panel log" aria-labelledby="h-log">
+    <header><h2 id="h-log">Sensor log</h2><p class="hint">Events and self-restarts, newest first</p></header>
+    <ol id="log" class="log-list"></ol>
+  </section>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>
