@@ -1,0 +1,50 @@
+# Targets Warden watches. URLs here are public; tokens and API keys go in the
+# environment (WARDEN_TOKEN, ANTHROPIC_API_KEY), never in this file.
+
+[sensor]
+interval_secs = 30
+db = "warden.db"
+dashboard = "127.0.0.1:7878"
+canary = "1.1.1.1:443"
+timeout_ms = 8000
+baseline_window = 60
+
+[[target]]
+name = "discord-api"
+kind = "http"
+url = "https://discord.com/api/v10/gateway"
+expected_status = 200
+latency_budget_ms = 1500
+
+[[target]]
+name = "icarus-site"
+kind = "http"
+url = "https://icarus.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+rollback = "vercel rollback --scope neonices-projects icarus.johanthegoat.xyz"
+
+# Discord POSTs interactions; a GET answering 405 means the function is deployed and running.
+[[target]]
+name = "icarus-bot"
+kind = "http"
+url = "https://icarus.johanthegoat.xyz/api/interactions"
+expected_status = 405
+latency_budget_ms = 3500
+depends_on = ["icarus-site", "discord-api"]
+
+# NexusOnline appends every webhook payload to its outbox, so the file's age is its pulse.
+[[target]]
+name = "nexusonline-sender"
+kind = "heartbeat"
+path = "../nexusonline/data/outbox.jsonl"
+max_age_secs = 3600
+latency_budget_ms = 50
+depends_on = ["discord-api"]
+
+[[target]]
+name = "johanthegoat-site"
+kind = "http"
+url = "https://johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 2500

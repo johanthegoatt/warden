@@ -1,0 +1,8 @@
+sensor/target/
+*.db
+*.db-wal
+*.db-shm
+__pycache__/
+*.pyc
+/demo/
+reports/diagnostics/
