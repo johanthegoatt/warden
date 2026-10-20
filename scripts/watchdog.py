@@ -134,7 +134,7 @@ def run() -> int:
     children = [
         Child("sensor", [str(exe), "run", "--config", str(ROOT / "warden.toml")], ROOT),
         Child("brain", [sys.executable, "-m", "warden_brain", "--model", os.environ.get("WARDEN_MODEL", "none"),
-                        "--interval", "10", "--live", "--reports", str(ROOT / "incidents")], ROOT / "brain"),
+                        "--interval", "10", "--live", "--provider", "vercel:neonices-projects", "--reports", str(ROOT / "incidents")], ROOT / "brain"),
     ]
     tunnel = cloudflared()
     if tunnel:

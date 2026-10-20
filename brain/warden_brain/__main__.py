@@ -7,7 +7,7 @@ import sys
 import time
 from pathlib import Path
 
-from . import llm, store
+from . import llm, provider as provider_mod, store
 from .machine import Brain
 
 
@@ -21,6 +21,8 @@ def main(argv=None) -> int:
     ap.add_argument("--interval", type=float, default=15.0, help="seconds between passes")
     ap.add_argument("--model", default=os.environ.get("WARDEN_MODEL", "ollama:llama3.2"),
                     help="none, ollama:<model> or anthropic:<model>")
+    ap.add_argument("--provider", default=os.environ.get("WARDEN_PROVIDER", ""),
+                    help="vercel:<team slug> asks Vercel which projects are paused, once a minute")
     args = ap.parse_args(argv)
 
     try:
@@ -33,8 +35,16 @@ def main(argv=None) -> int:
               "warden-sensor run --config warden.toml", file=sys.stderr)
         return 2
 
+    provider = None
+    if args.provider:
+        kind, _, scope = args.provider.partition(":")
+        if kind != "vercel" or not scope:
+            print("warden-brain: --provider must look like vercel:<team slug>", file=sys.stderr)
+            return 2
+        provider = provider_mod.Vercel(scope)
     conn = store.connect(args.db)
-    brain = Brain(conn, Path(args.reports), model=model, live=args.live)
+    brain = Brain(conn, Path(args.reports), model=model, live=args.live, provider=provider,
+                  provider_every=max(1, round(60 / args.interval)))
     print(f"brain: {'LIVE' if args.live else 'dry run'}, model {args.model}, db {args.db}")
     while True:
         for r in brain.run_once():

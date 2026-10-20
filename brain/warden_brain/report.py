@@ -101,7 +101,12 @@ def _reasoning(ctx: dict) -> list:
     verify, diag = out.get("verify", {}), out.get("diagnose", {})
     detail = event.get("detail") or {}
     lines = []
-    if event["kind"] == "failure":
+    prov = verify.get("provider") or {}
+    if prov:
+        state = {True: "paused", False: "running", None: "unknown (the API did not answer)"}[prov.get("paused")]
+        lines.append(f"- {prov['name']}'s API reports project {prov['project']} as {state}. "
+                     "This check exists because a paused project's edge cache can keep answering 200.")
+    if event["kind"] == "failure" and not detail.get("source"):
         p, s, c = detail.get("primary") or {}, detail.get("secondary") or {}, detail.get("canary") or {}
         lines.append(
             f"- The sensor's primary path (ureq) saw: {p.get('error') or p.get('status')}. "

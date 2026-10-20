@@ -79,7 +79,8 @@ class Executor:
             with urllib.request.urlopen(req, timeout=30) as resp:
                 return f"POST {spec['http_post']} answered {resp.status}"
         if "command" in spec:
-            out = subprocess.run(spec["command"], capture_output=True, text=True, timeout=120)
+            out = subprocess.run(spec["command"], capture_output=True, text=True, timeout=120,
+                                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             if out.returncode != 0:
                 raise RuntimeError(f"exit {out.returncode}: {out.stderr.strip()[:300]}")
             tail = out.stdout.strip()[:200]

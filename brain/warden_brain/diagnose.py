@@ -18,6 +18,16 @@ def rule_hypothesis(verdict: dict, evidence: list, target, event_detail: Optiona
     failing = [p for p in evidence if not p["ok"] and p["target"] == (culprit if location != "probe" else target.name)]
     cited = [p["id"] for p in failing][-5:]
 
+    if verdict.get("provider_paused"):
+        return {
+            "component": target.name,
+            "cause": "project paused",
+            "claim": (
+                f"The hosting project behind {target.name} is paused. Its edge cache keeps answering "
+                f"for pages it already holds, but the app itself is off."
+            ),
+            "evidence": [verdict["brain_probe"]["probe_id"]],
+        }
     if verdict["verdict"] == "degrading":
         return {
             "component": target.name,

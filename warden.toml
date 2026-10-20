@@ -55,3 +55,643 @@ expected_status = 200
 latency_budget_ms = 2500
 stateless = true
 restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_GmYPTqFqVYunRZBa0CZvAQGTrWig/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+# ---- every live Vercel project, generated from the domain survey on 2026-10-21 ----
+
+[[target]]
+name = "aegis-scan"
+kind = "http"
+url = "https://aegis-scan-ivory.vercel.app/"
+expected_status = 200
+latency_budget_ms = 3200
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_ZwnylGqmSeeuFGF52TbGi6dOiNQz/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "antiphon"
+kind = "http"
+url = "https://antiphon.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3700
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "arcade-wave-survivor"
+kind = "http"
+url = "https://arcade-wave-survivor.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3300
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "asking-your-crush-out"
+kind = "http"
+url = "https://asking-your-crush-out-flame.vercel.app/"
+expected_status = 200
+latency_budget_ms = 3000
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_6E5e0aowt8hOFEcAIwM5WjQ2VnqV/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "asking-your-crush-out-johanthegoat"
+kind = "http"
+url = "https://asking-your-crush-out.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "attention-detector"
+kind = "http"
+url = "https://attention-detector.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3400
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "autopilot-ops"
+kind = "http"
+url = "https://autopilot-ops.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "autopilot"
+kind = "http"
+url = "https://autopilot.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "backoff-lab"
+kind = "http"
+url = "https://backoff-lab.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "batchwise"
+kind = "http"
+url = "https://batchwise.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_zQH8z2m2GQ6xmn56NBzscmUAbTGi/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "brick-breaker"
+kind = "http"
+url = "https://brick-breaker.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "cache-stampede-lab"
+kind = "http"
+url = "https://cache-stampede-lab.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "cam-chaos-booth"
+kind = "http"
+url = "https://cam-chaos-booth.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 6100
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "choreshare-deploy"
+kind = "http"
+url = "https://choreshare-deploy.vercel.app/"
+expected_status = 200
+latency_budget_ms = 3000
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_76S9g42rpEYjh81THKmLeXNpsUeC/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "choreshare"
+kind = "http"
+url = "https://choreshare.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_FrTFV6AkkGED9zvLkqlVedVBk023/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "classic-pares-pos"
+kind = "http"
+url = "https://classic-pares-pos-kappa.vercel.app/"
+expected_status = 200
+latency_budget_ms = 3500
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_aNzdUM3t16DscqstRiy9MJeG5AP7/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "coil"
+kind = "http"
+url = "https://coil.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_AsVYBLQvjCFlc9ydlfsuoPVOdMoQ/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "consistent-hash-lab"
+kind = "http"
+url = "https://consistent-hash-lab.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3100
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "divvy-deploy"
+kind = "http"
+url = "https://divvy-deploy.vercel.app/"
+expected_status = 200
+latency_budget_ms = 3000
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_B8tgONOfe1xbclZj8SlfDVHjHA0T/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "downshift"
+kind = "http"
+url = "https://downshift.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "evenup-deploy"
+kind = "http"
+url = "https://evenup-deploy.vercel.app/"
+expected_status = 200
+latency_budget_ms = 3000
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_LiXe7qhMoe9DOhQW3OmiF4KZR4n8/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "evenup"
+kind = "http"
+url = "https://evenup.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "eye-aim-trainer"
+kind = "http"
+url = "https://eye-aim-trainer.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 4000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "face-mesh-frenzy"
+kind = "http"
+url = "https://face-mesh-frenzy.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "finger-monkey-lab"
+kind = "http"
+url = "https://finger-monkey-lab.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 4000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "focus-redirector"
+kind = "http"
+url = "https://focus-redirector.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3500
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "focusforge"
+kind = "http"
+url = "https://focusforge.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "fridgewise-deploy"
+kind = "http"
+url = "https://fridgewise-deploy.vercel.app/"
+expected_status = 200
+latency_budget_ms = 3000
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_WxVQkz6ucKQQUfV1sjM4cYcaFSzo/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "fusion-webcam-tracker"
+kind = "http"
+url = "https://fusion-webcam-tracker.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3100
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "gesture-pong"
+kind = "http"
+url = "https://gesture-pong.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "github-forest"
+kind = "http"
+url = "https://github-forest.vercel.app/"
+expected_status = 200
+latency_budget_ms = 3000
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_XbOFptqANhvOm1SW3vAOIOituRbH/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "github-world"
+kind = "http"
+url = "https://github-world-gold.vercel.app/"
+expected_status = 200
+latency_budget_ms = 3300
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_ns783AKtz0U22OI8042LwFiwYzAR/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "globe-control"
+kind = "http"
+url = "https://globe-control.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "goodhours"
+kind = "http"
+url = "https://goodhours.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3400
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_7W0LDqsxzX4m6K8cwjqrjceje849/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "grid-defender"
+kind = "http"
+url = "https://grid-defender.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "halo"
+kind = "http"
+url = "https://halo.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3400
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_QvG1h1c05ioTNxwTkfDS1BH65AGg/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "heat-score-relay"
+kind = "http"
+url = "https://heat-score-relay.vercel.app/"
+expected_status = 200
+latency_budget_ms = 4900
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_GKc6HMUxXHLzaAIaV1xJsYoFUaKE/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "heat-score"
+kind = "http"
+url = "https://heat-score.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "hollow-purple"
+kind = "http"
+url = "https://hollow-purple.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "idempotency-lab"
+kind = "http"
+url = "https://idempotency-lab.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3900
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "invoice-studio"
+kind = "http"
+url = "https://invoice-studio.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3200
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "iron-dome"
+kind = "http"
+url = "https://iron-dome.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "johanmethod"
+kind = "http"
+url = "https://johanmethod.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 4900
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_Kw7GrvRjNGgNfwDcsHzlmjBj8TJo/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "kivo"
+kind = "http"
+url = "https://kivo.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 11700
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_8XYWmhs4q6QBMEIYalAEGI8s3qGp/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "lux"
+kind = "http"
+url = "https://lux.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3700
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_S6Xeb0UCMMrqhEBteLD10ADWJkMj/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "mindmesh"
+kind = "http"
+url = "https://mindmesh.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3300
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "moodmix"
+kind = "http"
+url = "https://moodmix.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "onnx-digit-lab"
+kind = "http"
+url = "https://onnx-digit-lab.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "peergradr-site"
+kind = "http"
+url = "https://peergradr-site.vercel.app/"
+expected_status = 200
+latency_budget_ms = 3700
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_JJt9sxDRuzasDSVoNo3AFpKKj9uH/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "penumbra"
+kind = "http"
+url = "https://penumbra.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3100
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "photo-fit"
+kind = "http"
+url = "https://photo-fit-one.vercel.app/"
+expected_status = 200
+latency_budget_ms = 3000
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_2g7WxzyCBcu29PHopKqCJKdUoAy7/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "physics-reviewer"
+kind = "http"
+url = "https://physics-reviewer.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "pose-beat-blaster"
+kind = "http"
+url = "https://pose-beat-blaster.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 6600
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "pressure-line"
+kind = "http"
+url = "https://pressure-line.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "prorate"
+kind = "http"
+url = "https://prorate-rust.vercel.app/"
+expected_status = 200
+latency_budget_ms = 3000
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_4ZMIDr1lDZUb3veAcindmUlTFMPR/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "python"
+kind = "http"
+url = "https://python.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_Pf2xKQaCTMQKlLZU9qxO8KUwJzaJ/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "ratelimit-lab"
+kind = "http"
+url = "https://ratelimit-lab.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3200
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "recoup-deploy"
+kind = "http"
+url = "https://recoup-deploy.vercel.app/"
+expected_status = 200
+latency_budget_ms = 3000
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_QaskSQdazPAKfvX8XvTqeZoHvPsa/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "riposte"
+kind = "http"
+url = "https://riposte.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "roomcoat"
+kind = "http"
+url = "https://roomcoat.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3500
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_7OxeeJyc5Duf9Nte8L4SbvkTqobS/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "sat0ru-main"
+kind = "http"
+url = "https://sat0ru-main-five.vercel.app/"
+expected_status = 200
+latency_budget_ms = 3000
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_SckE6zRyAe66hV7yEdhhIKIrqV9B/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "sat0ru"
+kind = "http"
+url = "https://sat0ru.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "shelf-check-deploy"
+kind = "http"
+url = "https://shelf-check-deploy.vercel.app/"
+expected_status = 200
+latency_budget_ms = 3000
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_RqpOBbORBp90oC0vgFlj9VlWiYGw/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "shelf-check"
+kind = "http"
+url = "https://shelf-check.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_q4PUETabAOmBIN5vCbKkLaITATqE/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "signspeed"
+kind = "http"
+url = "https://signspeed.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "siphon-deploy"
+kind = "http"
+url = "https://siphon-deploy.vercel.app/"
+expected_status = 200
+latency_budget_ms = 3000
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_M40jFhTFmQlS8spK5PDno1AfoMtE/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "siphon"
+kind = "http"
+url = "https://siphon.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3500
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "snake-arena"
+kind = "http"
+url = "https://snake-arena.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "tail-latency-lab"
+kind = "http"
+url = "https://tail-latency-lab.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 4600
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "tetris-neon"
+kind = "http"
+url = "https://tetris-neon.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "tiltracer-relay"
+kind = "http"
+url = "https://tiltracer-relay.vercel.app/"
+expected_status = 200
+latency_budget_ms = 4300
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_Vg3LHIscZxs63nBHFt4AE8ypTTmE/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "tiltracer"
+kind = "http"
+url = "https://tiltracer.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3000
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "upcat-reviewer"
+kind = "http"
+url = "https://upcat-reviewer.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3400
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "vortex-builder"
+kind = "http"
+url = "https://vortex-builder.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3200
+depends_on = ["johanthegoat-site"]
+
+[[target]]
+name = "wattson-deploy"
+kind = "http"
+url = "https://wattson-deploy-theta.vercel.app/"
+expected_status = 200
+latency_budget_ms = 3000
+stateless = true
+restart_cmd = ["vercel.cmd", "api", "/v1/projects/prj_xdeAIapWJCdJxPFTJp4vlrIVl26e/unpause?slug=neonices-projects", "-X", "POST", "--silent"]
+
+[[target]]
+name = "webgpu-vision-lab"
+kind = "http"
+url = "https://webgpu-vision-lab.johanthegoat.xyz/"
+expected_status = 200
+latency_budget_ms = 3500
+depends_on = ["johanthegoat-site"]

@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 from typing import Callable, Optional
 
-from . import actions, diagnose, llm, report, store
+from . import actions, diagnose, llm, provider as provider_mod, report, store
 from . import probe as probe_mod
 
 FLOW = ("detect", "verify", "diagnose", "decide", "act", "report")
@@ -29,7 +29,12 @@ class Brain:
         confirm_attempts: int = 5,
         confirm_wait: float = 3.0,
         approval_ttl_hours: float = 24.0,
+        provider=None,
+        provider_every: int = 6,
     ):
+        self.provider = provider
+        self.provider_every = provider_every
+        self.passes = 0
         self.conn = conn
         self.reports_dir = Path(reports_dir)
         self.prober = prober
@@ -48,12 +53,19 @@ class Brain:
         ).fetchall()]
         results = [r for r in results if r]
 
+        if self.provider is not None and self.passes % self.provider_every == 0:
+            self._ask_provider()
+        self.passes += 1
+
         # A recovery the sensor saw on its own needs no incident.
         self.conn.execute("UPDATE events SET claimed_by = 0 WHERE claimed_by IS NULL AND kind = 'recovered'")
-        for event in self.conn.execute(
-            "SELECT * FROM events WHERE claimed_by IS NULL ORDER BY id"
-        ).fetchall():
-            results.append(self.handle(dict(event)))
+        events = [dict(e) for e in self.conn.execute("SELECT * FROM events WHERE claimed_by IS NULL ORDER BY id")]
+        # In a wide outage, fix what can be fixed first: a dependent's alert waits behind its cause.
+        fixable = {name for name, t in store.targets(self.conn).items() if t.restart}
+        events.sort(key=lambda e: (0 if e["kind"] == "failure" and e["fault"] == "target" and e["target"] in fixable
+                                   else 1 if e["kind"] == "failure" and e["fault"] == "target" else 2, e["id"]))
+        for event in events:
+            results.append(self.handle(event))
 
         if not results:
             results.append({"verdict": "healthy", "detail": "no new events from the sensor"})
@@ -63,6 +75,29 @@ class Brain:
             "last": results[-1].get("verdict"),
         })
         return results
+
+    def _ask_provider(self) -> None:
+        """Raises a failure for every target whose project the provider reports paused."""
+        paused = self.provider.paused()
+        if not paused:
+            return
+        busy = {r[0] for r in self.conn.execute(
+            "SELECT target FROM incidents WHERE closed_at IS NULL "
+            "UNION SELECT target FROM events WHERE claimed_by IS NULL AND kind = 'failure'")}
+        for name, target in store.targets(self.conn).items():
+            pid = provider_mod.project_of(target)
+            if pid in paused and name not in busy:
+                self.conn.execute(
+                    "INSERT INTO events (ts, target, kind, fault, culprit, detail) VALUES (?, ?, 'failure', 'target', ?, ?)",
+                    (store.now_iso(), name, name,
+                     json.dumps({"source": self.provider.name, "provider_paused": True, "project": pid})),
+                )
+
+    def _still_paused(self, ctx: dict) -> Optional[bool]:
+        paused = self.provider.paused() if self.provider is not None else None
+        if paused is None:
+            return None
+        return ctx["event"]["detail"].get("project") in paused
 
     def handle(self, event: dict) -> dict:
         event["detail"] = json.loads(event.get("detail") or "{}")
@@ -191,6 +226,22 @@ class Brain:
         all_healthy = fresh.ok and all(d["ok"] for d in deps)
         base = {"brain_probe": fresh_out, "dependencies": deps, "all_fresh_healthy": all_healthy}
 
+        project = provider_mod.project_of(target)
+        if e["kind"] == "failure" and self.provider is not None and project:
+            e["detail"].setdefault("project", project)
+            paused = self._still_paused(ctx)
+            base["provider"] = {"name": self.provider.name, "project": project, "paused": paused}
+            if paused:
+                v = {"verdict": "fault", "location": "target", "culprit": target.name, "provider_paused": True,
+                     "summary": f"{self.provider.name} reports project {project} paused; "
+                                f"the {fresh.summary()} the probe saw comes from the edge cache, not the app"}
+                return {**v, **base}, "diagnose"
+            if e["detail"].get("provider_paused"):
+                v = {"verdict": "healthy", "location": "none", "culprit": None,
+                     "summary": f"{self.provider.name} no longer reports {project} paused; it was unpaused before any action"}
+                ctx["out"]["close_outcome"] = "unpaused before any action"
+                return {**v, **base}, "closed"
+
         if e["kind"] == "failure" and e["fault"] == "probe":
             v = {"verdict": "probe_fault", "location": "probe", "culprit": e.get("culprit"),
                  "summary": f"not an outage: the sensor's {e.get('culprit')} failed while an independent path reached {target.name}"}
@@ -313,8 +364,16 @@ class Brain:
             if i:
                 time.sleep(self.confirm_wait)
             pid, res = self._probe(ctx, target)
-            tried.append({"probe_id": pid, "ok": res.ok, "result": res.summary()})
-            if res.ok:
+            ok = res.ok
+            result = res.summary()
+            if ctx["out"].get("verify", {}).get("provider_paused"):
+                # A cached 200 proves nothing here; the provider has to say the project runs again.
+                paused = self._still_paused(ctx)
+                ok = ok and paused is False
+                result += {True: "; provider still reports it paused", False: "; provider reports it running",
+                           None: "; provider could not be asked"}[paused]
+            tried.append({"probe_id": pid, "ok": ok, "result": result})
+            if ok:
                 break
         return {"recovered": bool(tried and tried[-1]["ok"]), "probes": tried}
 
