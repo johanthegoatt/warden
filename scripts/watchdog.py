@@ -6,6 +6,9 @@
   python scripts/watchdog.py install    also start it at every logon (Startup folder shortcut)
   python scripts/watchdog.py uninstall  remove the Startup shortcut
 
+With cloudflared installed it also opens a Cloudflare quick tunnel. The link,
+including the access key, is written to logs/tunnel-link.txt.
+
 The watchdog runs the sensor and the brain as child processes and restarts
 either one if it exits, waiting longer after each crash up to five minutes.
 The sensor runs from a copy in bin/, so rebuilding never fights a locked exe.
@@ -14,6 +17,8 @@ The sensor runs from a copy in bin/, so rebuilding never fights a locked exe.
 from __future__ import annotations
 
 import os
+import re
+import secrets
 import shutil
 import subprocess
 import sys
@@ -25,6 +30,8 @@ LOGS = ROOT / "logs"
 BIN = ROOT / "bin"
 PIDFILE = LOGS / "watchdog.pid"
 STOPFILE = LOGS / "watchdog.stop"
+LINKFILE = LOGS / "tunnel-link.txt"
+TOKENFILE = ROOT / ".warden-token"
 MAX_LOG = 5 * 1024 * 1024
 NO_WINDOW = 0x08000000
 DETACHED = 0x00000008 | 0x00000200  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
@@ -123,16 +130,23 @@ def run() -> int:
         shutil.copy2(built_sensor(), exe)
     except PermissionError:
         log("watchdog", "bin/warden-sensor.exe is in use; running the existing copy")
+    os.environ["WARDEN_TOKEN"] = token()
     children = [
         Child("sensor", [str(exe), "run", "--config", str(ROOT / "warden.toml")], ROOT),
         Child("brain", [sys.executable, "-m", "warden_brain", "--model", os.environ.get("WARDEN_MODEL", "none"),
                         "--interval", "10", "--live", "--reports", str(ROOT / "incidents")], ROOT / "brain"),
     ]
+    tunnel = cloudflared()
+    if tunnel:
+        children.append(Child("tunnel", [tunnel, "tunnel", "--no-autoupdate", "--url", "http://127.0.0.1:7878"], ROOT))
+    LINKFILE.unlink(missing_ok=True)
     log("watchdog", f"watchdog {os.getpid()} up; dashboard on http://127.0.0.1:7878")
     try:
         while not STOPFILE.exists():
             for c in children:
                 c.poll()
+            if tunnel:
+                publish_link()
             time.sleep(2)
     finally:
         for c in children:
@@ -178,11 +192,49 @@ def stop() -> int:
     return 0
 
 
+def token() -> str:
+    """The key for tunnelled access, created once and kept out of git."""
+    if not TOKENFILE.exists():
+        TOKENFILE.write_text(secrets.token_urlsafe(24), encoding="utf-8")
+    return TOKENFILE.read_text(encoding="utf-8").strip()
+
+
+def cloudflared():
+    if os.environ.get("WARDEN_TUNNEL", "1") == "0":
+        return None
+    found = shutil.which("cloudflared")
+    for candidate in (found, r"C:\Program Files (x86)\cloudflared\cloudflared.exe",
+                      r"C:\Program Files\cloudflared\cloudflared.exe"):
+        if candidate and Path(candidate).exists():
+            return candidate
+    log("watchdog", "cloudflared not found; no tunnel")
+    return None
+
+
+def publish_link() -> None:
+    """Quick tunnels get a new address on every start; keep the current one in a file."""
+    path = LOGS / "tunnel.log"
+    if not path.exists():
+        return
+    with path.open("rb") as f:
+        f.seek(max(0, path.stat().st_size - 65536))
+        tail = f.read().decode("utf-8", "replace")
+    urls = re.findall(r"https://[a-z0-9-]+\.trycloudflare\.com", tail)
+    if not urls:
+        return
+    link = f"{urls[-1]}/?key={token()}"
+    if not LINKFILE.exists() or LINKFILE.read_text(encoding="utf-8").strip() != link:
+        LINKFILE.write_text(link + "\n", encoding="utf-8")
+        log("watchdog", f"tunnel up at {urls[-1]} (full link with key in {LINKFILE.name})")
+
+
 def status() -> int:
     pid = running_pid()
     print(f"watchdog: {'running, pid ' + str(pid) if pid else 'not running'}")
     print(f"starts at logon: {'yes' if shortcut().exists() else 'no'}")
-    for name in ("watchdog", "sensor", "brain"):
+    if pid and LINKFILE.exists():
+        print(f"open from anywhere: {LINKFILE.read_text(encoding='utf-8').strip()}")
+    for name in ("watchdog", "sensor", "brain", "tunnel"):
         path = LOGS / f"{name}.log"
         if path.exists():
             lines = path.read_text(encoding="utf-8", errors="replace").splitlines()[-4:]

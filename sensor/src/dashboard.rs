@@ -16,8 +16,71 @@ const JS: &str = include_str!("../../dashboard/app.js");
 
 pub struct Settings {
     pub db: PathBuf,
-    /// When set, POST requests must carry it in X-Warden-Token.
+    /// Key for requests that arrive through a tunnel. Requests from this
+    /// machine never need it. Without it, tunnelled requests are refused.
     pub token: Option<String>,
+}
+
+const COOKIE: &str = "warden_key";
+
+/// A tunnel connects from localhost too, so the socket address cannot tell.
+/// Cloudflare adds its headers and keeps the public Host name.
+fn is_remote(req: &Request) -> bool {
+    let proxied = ["cf-connecting-ip", "cf-ray", "x-forwarded-for", "x-forwarded-host"]
+        .iter()
+        .any(|h| req.header(h).is_some());
+    let host = req.header("host").unwrap_or("");
+    let local_host = ["127.0.0.1", "localhost", "[::1]"]
+        .iter()
+        .any(|l| host == *l || host.starts_with(&format!("{l}:")));
+    proxied || !local_host
+}
+
+fn same(a: &str, b: &str) -> bool {
+    // Constant time, so the key cannot be guessed one character at a time from response timing.
+    a.len() == b.len() && a.bytes().zip(b.bytes()).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
+}
+
+fn cookie<'a>(req: &'a Request, name: &str) -> Option<&'a str> {
+    req.header("cookie")?
+        .split(';')
+        .filter_map(|c| c.trim().split_once('='))
+        .find(|(k, _)| *k == name)
+        .map(|(_, v)| v)
+}
+
+fn query<'a>(path: &'a str, name: &str) -> Option<&'a str> {
+    path.split_once('?')?
+        .1
+        .split('&')
+        .filter_map(|kv| kv.split_once('='))
+        .find(|(k, _)| *k == name)
+        .map(|(_, v)| v)
+}
+
+enum Access {
+    Granted,
+    /// The key came in the link: store it in a cookie and drop it from the address bar.
+    SetCookie,
+    Denied(&'static str),
+}
+
+fn access(req: &Request, settings: &Settings) -> Access {
+    if !is_remote(req) {
+        return Access::Granted;
+    }
+    let Some(token) = settings.token.as_deref() else {
+        return Access::Denied("remote access is off: set WARDEN_TOKEN on the machine running Warden");
+    };
+    if cookie(req, COOKIE).is_some_and(|c| same(c, token))
+        || req.header("x-warden-token").is_some_and(|t| same(t, token))
+    {
+        return Access::Granted;
+    }
+    if query(&req.path, "key").is_some_and(|k| same(k, token)) {
+        return Access::SetCookie;
+    }
+    Access::Denied("this Warden needs its key: open the full link from logs/tunnel-link.txt on the machine running it")
 }
 
 pub fn serve(addr: &str, settings: Settings) -> std::io::Result<()> {
@@ -103,6 +166,7 @@ fn respond(stream: &mut TcpStream, status: u16, content_type: &str, cache: &str,
     let reason = match status {
         200 => "OK",
         400 => "Bad Request",
+        401 => "Unauthorized",
         403 => "Forbidden",
         404 => "Not Found",
         405 => "Method Not Allowed",
@@ -128,6 +192,19 @@ fn handle(mut stream: TcpStream, settings: &Settings) -> std::io::Result<()> {
     let Some(req) = read_request(&mut stream) else {
         return problem(&mut stream, 400, "could not read the request");
     };
+    match access(&req, settings) {
+        Access::Granted => {}
+        Access::Denied(why) => return problem(&mut stream, 401, why),
+        Access::SetCookie => {
+            let token = settings.token.as_deref().unwrap_or("");
+            return write!(
+                stream,
+                "HTTP/1.1 303 See Other\r\nLocation: /\r\n\
+                 Set-Cookie: {COOKIE}={token}; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Strict\r\n\
+                 Cache-Control: no-store\r\nReferrer-Policy: no-referrer\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+            );
+        }
+    }
     let path = req.path.split('?').next().unwrap_or("").to_string();
     let segments: Vec<&str> = path.trim_matches('/').split('/').collect();
     match (req.method.as_str(), segments.as_slice()) {
@@ -179,13 +256,8 @@ fn decide(stream: &mut TcpStream, settings: &Settings, req: &Request, id: &str) 
         return problem(stream, 403, "missing X-Warden-Request header");
     }
     if let (Some(origin), Some(host)) = (req.header("origin"), req.header("host")) {
-        if origin != format!("http://{host}") {
+        if origin != format!("http://{host}") && origin != format!("https://{host}") {
             return problem(stream, 403, "cross-origin approvals are refused");
-        }
-    }
-    if let Some(token) = &settings.token {
-        if req.header("x-warden-token") != Some(token.as_str()) {
-            return problem(stream, 403, "approval token missing or wrong");
         }
     }
     let Ok(id) = id.parse::<i64>() else {
@@ -394,4 +466,50 @@ fn incident(conn: &Connection, id: i64) -> rusqlite::Result<Value> {
         )
         .optional()?;
     Ok(json!({ "incident": head, "transitions": transitions }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn req(path: &str, headers: &[(&str, &str)]) -> Request {
+        Request {
+            method: "GET".into(),
+            path: path.into(),
+            headers: headers.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(),
+            body: String::new(),
+        }
+    }
+
+    fn settings(token: Option<&str>) -> Settings {
+        Settings { db: PathBuf::from("x.db"), token: token.map(String::from) }
+    }
+
+    #[test]
+    fn local_requests_need_no_key() {
+        let r = req("/", &[("Host", "127.0.0.1:7878")]);
+        assert!(matches!(access(&r, &settings(None)), Access::Granted));
+    }
+
+    #[test]
+    fn tunnelled_requests_are_refused_without_a_configured_key() {
+        let r = req("/", &[("Host", "abc.trycloudflare.com"), ("Cf-Connecting-Ip", "1.2.3.4")]);
+        assert!(matches!(access(&r, &settings(None)), Access::Denied(_)));
+    }
+
+    #[test]
+    fn a_proxy_header_marks_a_request_remote_even_with_a_local_host() {
+        let r = req("/", &[("Host", "127.0.0.1:7878"), ("Cf-Ray", "x")]);
+        assert!(matches!(access(&r, &settings(Some("k3y"))), Access::Denied(_)));
+    }
+
+    #[test]
+    fn the_key_in_the_link_becomes_a_cookie_and_the_cookie_grants_access() {
+        let link = req("/?key=k3y", &[("Host", "abc.trycloudflare.com")]);
+        assert!(matches!(access(&link, &settings(Some("k3y"))), Access::SetCookie));
+        let wrong = req("/?key=nope", &[("Host", "abc.trycloudflare.com")]);
+        assert!(matches!(access(&wrong, &settings(Some("k3y"))), Access::Denied(_)));
+        let later = req("/api/overview", &[("Host", "abc.trycloudflare.com"), ("Cookie", "a=b; warden_key=k3y")]);
+        assert!(matches!(access(&later, &settings(Some("k3y"))), Access::Granted));
+    }
 }
