@@ -14,6 +14,8 @@ use std::time::{Duration, Instant};
 
 /// Drift alerts look this many probes ahead of the trend line.
 const HORIZON_PROBES: f64 = 10.0;
+/// A fault in Warden's own probe path is reported only after this many rounds in a row.
+const PROBE_STRIKES: u32 = 3;
 
 #[derive(Debug, Clone, PartialEq)]
 enum Health {
@@ -63,10 +65,11 @@ impl Loop {
             None => Health::Healthy,
         };
         let mut drifting = false;
+        let mut strikes = 0;
         let mut done = 0;
         loop {
             let started = Instant::now();
-            self.round(&conn, &mut baseline, &mut health, &mut drifting)
+            self.round(&conn, &mut baseline, &mut health, &mut drifting, &mut strikes)
                 .expect("database write failed during a probe round");
             done += 1;
             if rounds.is_some_and(|r| done >= r) {
@@ -82,12 +85,14 @@ impl Loop {
         baseline: &mut Baseline,
         health: &mut Health,
         drifting: &mut bool,
+        strikes: &mut u32,
     ) -> rusqlite::Result<()> {
         let t = &self.target;
         let primary = probe::primary(t, self.timeout);
         let primary_id = store::record_probe(conn, &t.name, "primary", &primary)?;
 
         if primary.ok {
+            *strikes = 0;
             if let Some(l) = primary.latency_ms {
                 baseline.push(l);
             }
@@ -140,6 +145,15 @@ impl Loop {
         });
         if fault == Fault::None {
             return Ok(());
+        }
+        if fault.kind() == "probe" {
+            // One cut-off handshake is noise; the same path failing three rounds running is a finding.
+            *strikes += 1;
+            if *strikes < PROBE_STRIKES {
+                return Ok(());
+            }
+        } else {
+            *strikes = 0;
         }
         let key = format!("{}:{}", fault.kind(), fault.culprit().unwrap_or(""));
         if *health == Health::Failing(key.clone()) {

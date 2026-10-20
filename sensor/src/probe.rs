@@ -88,19 +88,26 @@ pub fn canary(address: &str, timeout: Duration) -> Outcome {
 fn primary_http(target: &Target, timeout: Duration) -> Outcome {
     let url = target.url.as_deref().unwrap_or("");
     let expected = target.expected_status.unwrap_or(200);
-    let agent: ureq::Agent = ureq::Agent::config_builder()
-        .tls_config(
-            ureq::tls::TlsConfig::builder()
-                .provider(ureq::tls::TlsProvider::NativeTls)
-                .root_certs(ureq::tls::RootCerts::PlatformVerifier)
-                .build(),
-        )
-        .timeout_global(Some(timeout))
-        .http_status_as_error(false)
-        .max_redirects(0)
-        .user_agent("warden-primary/0.1")
-        .build()
-        .into();
+    // One shared agent keeps connections alive between rounds. A fresh TLS
+    // handshake per probe across 80 targets got handshakes cut off at the edge.
+    static AGENT: std::sync::OnceLock<ureq::Agent> = std::sync::OnceLock::new();
+    let agent = AGENT.get_or_init(|| {
+        ureq::Agent::config_builder()
+            .tls_config(
+                ureq::tls::TlsConfig::builder()
+                    .provider(ureq::tls::TlsProvider::NativeTls)
+                    .root_certs(ureq::tls::RootCerts::PlatformVerifier)
+                    .build(),
+            )
+            .timeout_global(Some(timeout))
+            .http_status_as_error(false)
+            .max_redirects(0)
+            .max_idle_connections(200)
+            .max_idle_connections_per_host(4)
+            .user_agent("warden-primary/0.1")
+            .build()
+            .into()
+    });
     let started = Instant::now();
     match agent.get(url).call() {
         Ok(resp) => {
