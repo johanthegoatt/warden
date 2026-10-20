@@ -12,6 +12,9 @@ const ui = {
   selectedReport: null,
   lastOk: null,
   data: null,
+  filter: "all",
+  query: "",
+  openGroups: new Set(),
 };
 
 function el(tag, attrs, ...children) {
@@ -70,6 +73,10 @@ function targetState(t) {
   const ev = t.last_event;
   if (!last) return { cls: "", label: "no reading" };
   if (!last.ok) {
+    const prev = t.probes[t.probes.length - 2];
+    const open = ev && ev.kind === "failure";
+    // One missed probe with no open failure is the same noise the sensor ignores.
+    if (!open && prev && prev.ok) return { cls: "ok", label: "healthy, one probe missed" };
     if (ev && ev.kind === "failure" && ev.fault === "probe") return { cls: "probe", label: "probe fault" };
     if (ev && ev.kind === "failure" && ev.fault === "dependency") return { cls: "fault", label: `via ${ev.culprit}` };
     return { cls: "fault", label: "failing" };
@@ -96,86 +103,215 @@ function sparkline(t) {
   return s;
 }
 
-function renderTargets(data) {
-  const list = document.getElementById("targets");
+function targetRow(t) {
+  const st = targetState(t);
+  const last = t.probes[t.probes.length - 1];
+  const okLat = t.probes.filter((p) => p.ok && p.latency_ms !== null).map((p) => p.latency_ms).sort((a, b) => a - b);
+  const p50 = okLat.length ? okLat[Math.floor(okLat.length / 2)] : null;
+  const kindLine = t.kind === "heartbeat" ? `heartbeat file ${t.endpoint}` : t.endpoint;
+  const lastLine = last ? (last.ok ? `${Math.round(last.latency_ms)} ms` : (last.error || `status ${last.status}`)) : "waiting";
+  return el("li", { class: "target" },
+    el("span", { class: `dot ${st.cls}`, "aria-hidden": "true" }),
+    el("div", {},
+      el("div", { class: "tname", text: t.name }),
+      el("div", { class: "tsub", text: kindLine }),
+      el("div", { class: `state ${st.cls}`, text: st.label })),
+    el("div", { class: "spark-cell" }, t.probes.length ? sparkline(t) : el("span", { class: "tsub", text: "no probes yet" })),
+    el("div", { class: "tnum" },
+      el("b", { text: lastLine.length > 40 ? lastLine.slice(0, 40) + "..." : lastLine, title: lastLine }),
+      el("span", { text: `p50 ${p50 === null ? "-" : Math.round(p50)} / ${t.latency_budget_ms} ms` })));
+}
+
+function targetTile(t) {
+  const st = targetState(t);
+  const lastOk = [...t.probes].reverse().find((p) => p.ok);
+  const value = !t.probes.length ? "waiting" : st.cls === "ok" && lastOk ? `${Math.round(lastOk.latency_ms)} ms` : st.label;
+  return el("li", { class: "tile", title: `${t.name}: ${st.label}, ${t.endpoint}` },
+    el("span", { class: `dot ${st.cls}`, "aria-hidden": "true" }),
+    el("span", { class: "n", text: t.name }),
+    el("span", { class: `v ${st.cls}`, text: value }));
+}
+
+function groupOf(t) {
+  if (t.kind === "heartbeat") return "Local processes";
+  if (t.depends_on && t.depends_on.length) return `Served by ${t.depends_on[0]}`;
+  return "Standalone services";
+}
+
+function renderTargets(data, forced = false) {
+  const attentionWrap = document.getElementById("attention-wrap");
+  const attention = document.getElementById("attention");
+  const groupsBox = document.getElementById("groups");
+  const noMatch = document.getElementById("no-match");
   if (!data.targets.length) {
-    list.replaceChildren(el("li", { class: "empty", text: "No targets yet. Add a [[target]] to warden.toml and restart the sensor." }));
+    attentionWrap.hidden = true;
+    groupsBox.replaceChildren(el("p", { class: "empty", text: "No targets yet. Add a [[target]] to warden.toml and restart the sensor." }));
     return;
   }
-  list.replaceChildren(...data.targets.map((t) => {
-    const st = targetState(t);
-    const last = t.probes[t.probes.length - 1];
-    const okLat = t.probes.filter((p) => p.ok && p.latency_ms !== null).map((p) => p.latency_ms).sort((a, b) => a - b);
-    const p50 = okLat.length ? okLat[Math.floor(okLat.length / 2)] : null;
-    const kindLine = t.kind === "heartbeat" ? `heartbeat file ${t.endpoint}` : t.endpoint;
-    const lastLine = last ? (last.ok ? `${Math.round(last.latency_ms)} ms` : (last.error || `status ${last.status}`)) : "waiting";
-    return el("li", { class: "target" },
-      el("span", { class: `dot ${st.cls}`, "aria-hidden": "true" }),
-      el("div", {},
-        el("div", { class: "tname", text: t.name }),
-        el("div", { class: "tsub", text: kindLine }),
-        el("div", { class: `state ${st.cls}`, text: st.label })),
-      el("div", { class: "spark-cell" }, t.probes.length ? sparkline(t) : el("span", { class: "tsub", text: "no probes yet" })),
-      el("div", { class: "tnum" },
-        el("b", { text: lastLine.length > 22 ? lastLine.slice(0, 22) + "..." : lastLine, title: lastLine }),
-        el("span", { text: `p50 ${p50 === null ? "-" : Math.round(p50)} / ${t.latency_budget_ms} ms` })));
+  const q = ui.query.trim().toLowerCase();
+  const matches = (t) => !q || t.name.toLowerCase().includes(q) || t.endpoint.toLowerCase().includes(q);
+  const shown = data.targets.filter(matches);
+  const bad = shown.filter((t) => targetState(t).cls !== "ok");
+  const good = shown.filter((t) => targetState(t).cls === "ok");
+
+  attentionWrap.hidden = ui.filter === "healthy" || !bad.length;
+  attention.replaceChildren(...bad.map(targetRow));
+
+  const groups = new Map();
+  if (ui.filter !== "attention") for (const t of good) {
+    const g = groupOf(t);
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g).push(t);
+  }
+  // A poll must not pull a focused group header out from under the keyboard.
+  const keepFocus = !forced && groupsBox.contains(document.activeElement);
+  if (!keepFocus) groupsBox.replaceChildren(...[...groups.entries()].sort((a, b) => b[1].length - a[1].length).map(([name, members]) => {
+    const det = el("details", { class: "group", open: ui.openGroups.has(name) || Boolean(q) },
+      el("summary", {}, el("span", { text: name }), el("span", { class: "count", text: `${members.length} healthy` })),
+      el("ol", { class: "tile-grid" }, ...members.map(targetTile)));
+    det.addEventListener("toggle", () => {
+      if (q) return;
+      if (det.open) ui.openGroups.add(name); else ui.openGroups.delete(name);
+      store("warden-open-groups", JSON.stringify([...ui.openGroups]));
+    });
+    return det;
   }));
+
+  const nothing = !shown.length || (ui.filter === "attention" && !bad.length) || (ui.filter === "healthy" && !good.length);
+  noMatch.hidden = !nothing;
+  if (nothing) {
+    noMatch.textContent = q && !shown.length
+      ? `No target matches "${ui.query}". Clear the search to see all ${data.targets.length}.`
+      : ui.filter === "attention" ? "Nothing needs attention. Every target passed its last probe." : "No healthy targets match this view.";
+  }
+  document.getElementById("targets-hint").textContent =
+    q ? `${shown.length} of ${data.targets.length} match` : `${data.targets.length} targets, problems first`;
+}
+
+/* ---------- summary ---------- */
+function renderSummary(data) {
+  const counts = { ok: 0, fault: 0, drift: 0, probe: 0, "": 0 };
+  for (const t of data.targets) counts[targetState(t).cls] += 1;
+  const open = data.incidents.filter((i) => !i.closed_at).length;
+  const fixed = data.incidents.filter((i) => (i.outcome || "").startsWith("fixed")).length;
+  const line = data.targets.length
+    ? `${counts.ok} healthy, ${counts.fault} failing, ${counts.drift} drifting, ${counts.probe} with a probe fault. ` +
+      `${open} open ${open === 1 ? "incident" : "incidents"}, ${data.approvals.length} waiting on you.`
+    : "No targets yet.";
+  const node = document.getElementById("summary-line");
+  if (node.textContent !== line) node.textContent = line;
+  const tile = (label, value, cls) =>
+    el("div", { class: value === 0 && cls !== "is-ok" ? "is-zero" : cls }, el("dt", { text: label }), el("dd", { text: String(value) }));
+  document.getElementById("tiles").replaceChildren(
+    tile("Healthy", counts.ok, "is-ok"),
+    tile("Failing", counts.fault, "is-fault"),
+    tile("Drifting", counts.drift, "is-drift"),
+    tile("Probe faults", counts.probe, "is-probe"),
+    tile("Open incidents", open, "is-drift"),
+    tile("Fixes confirmed", fixed, "is-ok"));
 }
 
 /* ---------- dependency graph ---------- */
+// Only targets with an edge are drawn. Leaves that share one dependency
+// collapse into a cluster node once there are more than four of them.
+const CLUSTER_MIN = 5;
+const RANK = { fault: 4, probe: 3, drift: 2, ok: 1, "": 0 };
+
 function renderGraph(data) {
   const box = document.getElementById("graph");
+  const note = document.getElementById("graph-note");
   const byName = Object.fromEntries(data.targets.map((t) => [t.name, t]));
-  const depth = {};
-  const level = (n, seen = new Set()) => {
-    if (depth[n] !== undefined) return depth[n];
-    if (seen.has(n)) return 0;
-    seen.add(n);
-    const deps = (byName[n] && byName[n].depends_on) || [];
-    depth[n] = deps.length ? 1 + Math.max(...deps.map((d) => level(d, seen))) : 0;
-    return depth[n];
+  const dependents = {};
+  for (const t of data.targets) for (const d of t.depends_on || []) (dependents[d] ||= []).push(t.name);
+  const isLeaf = (n) => !(dependents[n] || []).length;
+
+  const nodes = new Map(); // id -> { label, state, title, cluster }
+  const edges = [];
+  const add = (name) => {
+    if (!nodes.has(name) && byName[name]) {
+      const st = targetState(byName[name]);
+      nodes.set(name, { label: name, state: st.cls, title: `${name}: ${st.label}` });
+    }
   };
-  data.targets.forEach((t) => level(t.name));
+  for (const [dep, kids] of Object.entries(dependents)) {
+    add(dep);
+    const leaves = kids.filter((k) => isLeaf(k) && (byName[k].depends_on || []).length === 1);
+    const others = kids.filter((k) => !leaves.includes(k));
+    if (leaves.length >= CLUSTER_MIN) {
+      const id = `cluster:${dep}`;
+      const states = leaves.map((k) => targetState(byName[k]));
+      const worst = states.reduce((a, b) => (RANK[b.cls] > RANK[a.cls] ? b : a));
+      const bad = states.filter((s) => s.cls !== "ok").length;
+      nodes.set(id, { label: `${leaves.length} sites`, state: worst.cls, cluster: true,
+        title: `${leaves.length} sites served by ${dep}: ${bad ? `${bad} not healthy` : "all healthy"}` });
+      edges.push([id, dep]);
+    } else {
+      for (const k of leaves) { add(k); edges.push([k, dep]); }
+    }
+    for (const k of others) { add(k); edges.push([k, dep]); }
+  }
+
+  const unlinked = data.targets.length - [...nodes.values()].reduce((n, v) => n + (v.cluster ? Number(v.label.split(" ")[0]) : 1), 0);
+  note.textContent = nodes.size
+    ? `${unlinked} ${unlinked === 1 ? "target has" : "targets have"} no dependencies and ${unlinked === 1 ? "is" : "are"} left out.`
+    : "";
+  if (!nodes.size) {
+    box.replaceChildren(el("p", { class: "empty", text: "No dependencies in warden.toml yet. Add depends_on to a target to see it here." }));
+    return;
+  }
+
+  const out = Object.fromEntries([...nodes.keys()].map((id) => [id, []]));
+  for (const [from, to] of edges) out[from].push(to);
+  const depth = {};
+  const level = (id, seen = new Set()) => {
+    if (depth[id] !== undefined) return depth[id];
+    if (seen.has(id)) return 0;
+    seen.add(id);
+    depth[id] = out[id].length ? 1 + Math.max(...out[id].map((d) => level(d, seen))) : 0;
+    return depth[id];
+  };
+  for (const id of nodes.keys()) level(id);
   const cols = {};
-  for (const t of data.targets) (cols[depth[t.name]] ||= []).push(t.name);
-  const ncol = Object.keys(cols).length || 1;
-  const nodeW = 128, nodeH = 26, gapX = 44, gapY = 14;
-  const rows = Math.max(1, ...Object.values(cols).map((c) => c.length));
+  for (const id of nodes.keys()) (cols[depth[id]] ||= []).push(id);
+  const ncol = Object.keys(cols).length;
+  const nodeW = 150, nodeH = 28, gapX = 40, gapY = 12;
+  const rows = Math.max(...Object.values(cols).map((c) => c.length));
   const W = ncol * nodeW + (ncol - 1) * gapX + 8, H = rows * (nodeH + gapY) + 8;
   const pos = {};
-  Object.entries(cols).forEach(([c, names]) => names.forEach((n, i) => {
-    pos[n] = { x: 4 + (ncol - 1 - Number(c)) * (nodeW + gapX), y: 4 + i * (nodeH + gapY) + ((rows - names.length) * (nodeH + gapY)) / 2 };
+  Object.entries(cols).forEach(([c, ids]) => ids.forEach((id, i) => {
+    pos[id] = { x: 4 + (ncol - 1 - Number(c)) * (nodeW + gapX), y: 4 + i * (nodeH + gapY) + ((rows - ids.length) * (nodeH + gapY)) / 2 };
   }));
-  const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: "img", "aria-label": "Dependency graph of watched targets" });
+  const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: "img",
+    "aria-label": `Dependency graph: ${edges.length} links between ${nodes.size} nodes` });
   const defs = svg("defs");
   const marker = svg("marker", { id: "arrow", viewBox: "0 0 8 8", refX: 7, refY: 4, markerWidth: 7, markerHeight: 7, orient: "auto" });
   marker.append(svg("path", { d: "M0,0 L8,4 L0,8 z" }));
   defs.append(marker);
   s.append(defs);
-  for (const t of data.targets) for (const d of t.depends_on || []) {
-    if (!pos[d]) continue;
-    const a = pos[t.name], b = pos[d];
-    const x1 = a.x + nodeW, y1 = a.y + nodeH / 2, x2 = b.x, y2 = b.y + nodeH / 2;
-    const mx = (x1 + x2) / 2;
+  for (const [from, to] of edges) {
+    const a = pos[from], b = pos[to];
+    const x1 = a.x + nodeW, y1 = a.y + nodeH / 2, x2 = b.x, y2 = b.y + nodeH / 2, mx = (x1 + x2) / 2;
     s.append(svg("path", { class: "edge", d: `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2 - 2},${y2}`, "marker-end": "url(#arrow)" }));
   }
-  for (const t of data.targets) {
-    const p = pos[t.name];
-    const g = svg("g", { class: `node ${targetState(t).cls}`, transform: `translate(${p.x},${p.y})` });
+  for (const [id, n] of nodes) {
+    const p = pos[id];
+    const g = svg("g", { class: `node ${n.state}${n.cluster ? " cluster" : ""}`, transform: `translate(${p.x},${p.y})` });
     g.append(svg("rect", { width: nodeW, height: nodeH, rx: 2 }));
-    const label = svg("text", { x: 8, y: 17 });
-    label.textContent = t.name.length > 17 ? t.name.slice(0, 16) + "." : t.name;
+    const label = svg("text", { x: 8, y: 18 });
+    label.textContent = n.label.length > 18 ? n.label.slice(0, 17) + "." : n.label;
     const title = svg("title");
-    title.textContent = `${t.name}: ${targetState(t).label}`;
+    title.textContent = n.title;
     g.append(label, title);
     s.append(g);
   }
-  box.replaceChildren(data.targets.length ? s : el("p", { class: "empty", text: "No targets to draw." }));
+  box.replaceChildren(s);
 }
 
 /* ---------- incident ---------- */
 async function renderIncident(data) {
-  const list = data.incidents;
+  // Checks that closed as healthy are not incidents anyone needs to read.
+  const real = data.incidents.filter((i) => i.verdict !== "healthy" || !i.closed_at);
+  const list = real.length ? real : data.incidents;
   const rail = document.getElementById("rail");
   const step = document.getElementById("step");
   const hint = document.getElementById("incident-hint");
@@ -213,7 +349,11 @@ async function renderIncident(data) {
   const picker = el("div", { class: "picker", role: "group", "aria-label": "Recent incidents" },
     ...list.slice(0, 8).map((i) => el("button", {
       type: "button", "aria-pressed": i.id === ui.selectedIncident ? "true" : "false",
-      onclick: () => { ui.selectedIncident = i.id; ui.pinnedIncident = true; ui.selectedState = null; renderIncident(ui.data); },
+      onclick: () => {
+        ui.selectedIncident = i.id; ui.pinnedIncident = true; ui.selectedState = null;
+        setHash(`incident-${i.id}`);
+        renderIncident(ui.data);
+      },
       text: `#${i.id} ${i.target}`,
     })));
 
@@ -302,6 +442,7 @@ function renderReports(data) {
 
 async function openReport(id) {
   ui.selectedReport = id;
+  setHash(`report-${id}`);
   renderReports(ui.data);
   const reader = document.getElementById("reader");
   try {
@@ -399,6 +540,7 @@ async function refresh() {
     ui.lastOk = Date.now();
     banner.hidden = true;
     renderBar(data);
+    renderSummary(data);
     renderTargets(data);
     renderGraph(data);
     renderApprovals(data);
@@ -413,5 +555,30 @@ async function refresh() {
   }
 }
 
-refresh();
-setInterval(refresh, POLL_MS);
+/* ---------- filters, deep links, polling ---------- */
+function setHash(h) {
+  try { history.replaceState(null, "", `#${h}`); } catch (_) {}
+}
+
+(function wire() {
+  try { ui.openGroups = new Set(JSON.parse(store("warden-open-groups") || "[]")); } catch (_) {}
+  const q = document.getElementById("q");
+  q.addEventListener("input", () => { ui.query = q.value; if (ui.data) renderTargets(ui.data, true); });
+  for (const b of document.querySelectorAll(".filters button")) {
+    b.addEventListener("click", () => {
+      ui.filter = b.dataset.filter;
+      for (const o of document.querySelectorAll(".filters button")) o.setAttribute("aria-pressed", String(o === b));
+      if (ui.data) renderTargets(ui.data, true);
+    });
+  }
+  const m = location.hash.match(/^#(incident|report)-(\d+)$/);
+  if (m && m[1] === "incident") { ui.selectedIncident = Number(m[2]); ui.pinnedIncident = true; }
+  if (m && m[1] === "report") ui.pendingReport = Number(m[2]);
+})();
+
+// Hidden tabs stop polling; coming back refreshes at once.
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+setInterval(() => { if (!document.hidden) refresh(); }, POLL_MS);
+refresh().then(() => {
+  if (ui.pendingReport) { openReport(ui.pendingReport); ui.pendingReport = null; }
+});

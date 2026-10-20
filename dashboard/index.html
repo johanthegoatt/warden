@@ -13,36 +13,62 @@
 <a class="skip" href="#main">Skip to the panels</a>
 <header class="bar">
   <div class="mark"><span class="lamp" aria-hidden="true"></span><span>Warden</span></div>
-  <dl class="readouts" aria-live="polite">
+  <dl class="readouts">
     <div><dt>Mode</dt><dd id="mode">...</dd></div>
     <div><dt>Sensor</dt><dd id="sensor-age">...</dd></div>
     <div><dt>Brain</dt><dd id="brain-age">...</dd></div>
     <div><dt>Model</dt><dd id="model">...</dd></div>
   </dl>
-  <button class="ghost" id="theme" type="button" aria-label="Switch colour theme">Theme</button>
+  <button class="ghost" id="theme" type="button">Switch theme</button>
 </header>
-<div class="stale" id="stale" hidden role="status"></div>
+<div class="stale" id="stale" hidden role="alert"></div>
 
 <main id="main" class="grid">
+  <section class="panel summary" aria-labelledby="h-summary">
+    <h1 id="h-summary" class="visually-hidden">Fleet status</h1>
+    <p id="summary-line" class="summary-line" role="status" aria-atomic="true">Waiting for the sensor's first reading</p>
+    <dl class="tiles" id="tiles"></dl>
+  </section>
+
+  <section class="panel incident" aria-labelledby="h-incident">
+    <header><h2 id="h-incident">Incident</h2><p class="hint" id="incident-hint">detect, verify, diagnose, decide, act, report</p></header>
+    <ol class="rail" id="rail" aria-label="State machine steps"></ol>
+    <div id="step" class="step"><p class="empty">No incident yet. When the sensor raises one, each step it passes through appears here with what went in and what came out.</p></div>
+  </section>
+
+  <div class="side">
+    <section class="panel approvals" aria-labelledby="h-approvals">
+      <header><h2 id="h-approvals">Waiting on you</h2><p class="hint">Medium-tier actions run only after approval</p></header>
+      <ul id="approvals" class="approval-list"></ul>
+    </section>
+    <section class="panel log" aria-labelledby="h-log">
+      <header><h2 id="h-log">Sensor log</h2><p class="hint">Events and self-restarts, newest first</p></header>
+      <ol id="log" class="log-list"></ol>
+    </section>
+  </div>
+
   <section class="panel targets" aria-labelledby="h-targets">
-    <header><h2 id="h-targets">Targets</h2><p class="hint" id="targets-hint">Latency of the last 48 primary probes against each budget</p></header>
-    <ol id="targets" class="target-list"><li class="skeleton">Waiting for the sensor's first reading</li></ol>
+    <header><h2 id="h-targets">Targets</h2><p class="hint" id="targets-hint">Latency of the last 48 probes against each budget</p></header>
+    <div class="controls">
+      <label class="search"><span>Find a target</span><input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="name or address"></label>
+      <div class="filters" role="group" aria-label="Show targets">
+        <button type="button" data-filter="all" aria-pressed="true">All</button>
+        <button type="button" data-filter="attention" aria-pressed="false">Needs attention</button>
+        <button type="button" data-filter="healthy" aria-pressed="false">Healthy</button>
+      </div>
+    </div>
+    <div id="attention-wrap" hidden>
+      <h3 class="sub">Needs attention</h3>
+      <ol id="attention" class="target-list"></ol>
+    </div>
+    <div id="groups" class="groups"><p class="skeleton">Waiting for the sensor's first reading</p></div>
+    <p id="no-match" class="empty" hidden></p>
   </section>
 
   <section class="panel graph" aria-labelledby="h-graph">
     <header><h2 id="h-graph">Dependencies</h2><p class="hint">Arrows point at what a service needs</p></header>
     <div id="graph" class="graph-box"></div>
-  </section>
-
-  <section class="panel incident" aria-labelledby="h-incident">
-    <header><h2 id="h-incident">Incident</h2><p class="hint" id="incident-hint">detect, verify, diagnose, decide, act, report</p></header>
-    <ol class="rail" id="rail" aria-label="State machine"></ol>
-    <div id="step" class="step"><p class="empty">No incident yet. When the sensor raises one, each step it passes through appears here with what went in and what came out.</p></div>
-  </section>
-
-  <section class="panel approvals" aria-labelledby="h-approvals">
-    <header><h2 id="h-approvals">Waiting on you</h2><p class="hint">Medium-tier actions run only after approval</p></header>
-    <ul id="approvals" class="approval-list"></ul>
+    <p id="graph-note" class="hint"></p>
   </section>
 
   <section class="panel reports" aria-labelledby="h-reports">
@@ -51,11 +77,6 @@
       <ul id="report-list" class="report-list"></ul>
       <article id="reader" class="reader" tabindex="-1" aria-live="polite"><p class="empty">Pick a report to read it here.</p></article>
     </div>
-  </section>
-
-  <section class="panel log" aria-labelledby="h-log">
-    <header><h2 id="h-log">Sensor log</h2><p class="hint">Events and self-restarts, newest first</p></header>
-    <ol id="log" class="log-list"></ol>
   </section>
 </main>
 <script src="/app.js"></script>
