@@ -119,6 +119,7 @@ h2 { font: 600 var(--step--1)/1.2 var(--mono); letter-spacing: 0.12em; text-tran
 .state.ok { color: var(--ok); } .state.fault { color: var(--fault); } .state.drift { color: var(--amber); } .state.probe { color: var(--probe); }
 
 /* graph */
+.graph-box svg { height: auto; }
 .graph-box svg text { fill: var(--text); font: 11px var(--mono); }
 .graph-box .node rect { fill: var(--ink); stroke: var(--rule-strong); }
 .graph-box .node.fault rect { stroke: var(--fault); }

@@ -70,6 +70,7 @@ def wait_for(conn, sql: str, params=(), timeout: float = 90.0, what: str = ""):
 
 
 def main() -> int:
+    sys.stdout.reconfigure(line_buffering=True)
     if not EXE.exists():
         print(f"build the sensor first: cargo build --manifest-path sensor/Cargo.toml  ({EXE} missing)")
         return 2

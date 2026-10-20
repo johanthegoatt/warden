@@ -146,7 +146,7 @@ function renderGraph(data) {
   Object.entries(cols).forEach(([c, names]) => names.forEach((n, i) => {
     pos[n] = { x: 4 + (ncol - 1 - Number(c)) * (nodeW + gapX), y: 4 + i * (nodeH + gapY) + ((rows - names.length) * (nodeH + gapY)) / 2 };
   }));
-  const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Dependency graph of watched targets" });
+  const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: "img", "aria-label": "Dependency graph of watched targets" });
   const defs = svg("defs");
   const marker = svg("marker", { id: "arrow", viewBox: "0 0 8 8", refX: 7, refY: 4, markerWidth: 7, markerHeight: 7, orient: "auto" });
   marker.append(svg("path", { d: "M0,0 L8,4 L0,8 z" }));
@@ -181,7 +181,12 @@ async function renderIncident(data) {
   const hint = document.getElementById("incident-hint");
   if (!list.length) { rail.replaceChildren(); return; }
   const open = list.find((i) => !i.closed_at);
-  if (ui.selectedIncident === null || !list.some((i) => i.id === ui.selectedIncident)) ui.selectedIncident = (open || list[0]).id;
+  // Follow the newest incident until someone picks one by hand.
+  if (!ui.pinnedIncident || !list.some((i) => i.id === ui.selectedIncident)) {
+    const newest = (open || list[0]).id;
+    if (newest !== ui.selectedIncident) ui.selectedState = null;
+    ui.selectedIncident = newest;
+  }
   let detail;
   try {
     detail = await getJSON(`/api/incidents/${ui.selectedIncident}`);
@@ -208,7 +213,7 @@ async function renderIncident(data) {
   const picker = el("div", { class: "picker", role: "group", "aria-label": "Recent incidents" },
     ...list.slice(0, 8).map((i) => el("button", {
       type: "button", "aria-pressed": i.id === ui.selectedIncident ? "true" : "false",
-      onclick: () => { ui.selectedIncident = i.id; ui.selectedState = null; renderIncident(ui.data); },
+      onclick: () => { ui.selectedIncident = i.id; ui.pinnedIncident = true; ui.selectedState = null; renderIncident(ui.data); },
       text: `#${i.id} ${i.target}`,
     })));
 
@@ -226,6 +231,10 @@ async function renderIncident(data) {
 /* ---------- approvals ---------- */
 function renderApprovals(data) {
   const list = document.getElementById("approvals");
+  // Rebuilding on every poll would pull a button out from under a click or keyboard focus.
+  const key = data.approvals.map((a) => a.id).join(",") || "none";
+  if (key === ui.approvalsKey) return;
+  ui.approvalsKey = key;
   if (!data.approvals.length) {
     list.replaceChildren(el("li", { class: "empty", text: "Nothing to approve. Restarts of services that may hold state wait here." }));
     return;
@@ -299,7 +308,7 @@ async function openReport(id) {
     const res = await fetch(`/api/reports/${id}`);
     if (!res.ok) throw new Error(`The sensor answered ${res.status}.`);
     reader.replaceChildren(...markdown(await res.text()));
-    reader.focus();
+    reader.focus({ preventScroll: true });
   } catch (e) {
     reader.replaceChildren(el("p", { class: "empty", text: `Could not load report ${id}: ${e.message}` }));
   }

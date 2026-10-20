@@ -319,7 +319,8 @@ class Brain:
     def _report(self, ctx: dict):
         md, path = report.write(self.conn, ctx, self.reports_dir)
         ctx["report_md"], ctx["report_path"] = md, str(path)
-        return {"summary": f"report written to {path}", "path": str(path)}, "closed"
+        shown = _relative(path, self.reports_dir.parent)
+        return {"summary": f"report written to {shown}", "path": shown}, "closed"
 
     # ---- approvals ---------------------------------------------------
 

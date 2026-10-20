@@ -1,6 +1,6 @@
 # Incident 1: fake-api, application error
 
-Opened 2026-10-20 14:00:39 UTC. Mode: live. Verdict: fault. Action: restart (tier low).
+Opened 2026-10-20 14:10:37 UTC. Mode: live. Verdict: fault. Action: restart (tier low).
 
 ## What broke
 
@@ -10,27 +10,27 @@ fake-api is reachable but its application returns 500.
 
 | Time (UTC) | Step | What happened |
 |---|---|---|
-| 14:00:38 | sensor | failure on fake-api, located at target (fake-api) |
-| 14:00:39 | detect | sensor raised a failure on fake-api, located at target (fake-api) |
-| 14:00:39 | verify | confirmed by a third probe stack: status 500, expected 200; dependencies pass |
-| 14:00:41 | diagnose | fake-api is reachable but its application returns 500. |
-| 14:00:41 | decide | restart at tier low: fake-api is marked stateless, so a restart loses nothing |
-| 14:00:41 | act | fixed: restart ran and probe #16 passed |
+| 14:10:35 | sensor | failure on fake-api, located at target (fake-api) |
+| 14:10:37 | detect | sensor raised a failure on fake-api, located at target (fake-api) |
+| 14:10:37 | verify | confirmed by a third probe stack: status 500, expected 200; dependencies pass |
+| 14:10:39 | diagnose | fake-api is reachable but its application returns 500. |
+| 14:10:39 | decide | restart at tier low: fake-api is marked stateless, so a restart loses nothing |
+| 14:10:39 | act | fixed: restart ran and probe #16 passed |
 
 ## Evidence
 
 | Probe | Time | Target | Path | Result |
 |---|---|---|---|---|
-| #1 | 14:00:13 | fake-api | primary | 200 in 1 ms |
-| #3 | 14:00:18 | fake-api | primary | 200 in 1 ms |
-| #5 | 14:00:23 | fake-api | primary | 200 in 1 ms |
-| #7 | 14:00:28 | fake-api | primary | 200 in 1 ms |
-| #9 | 14:00:33 | fake-api | primary | 200 in 1 ms |
-| #11 (cited) | 14:00:38 | fake-api | primary | status 500, expected 200 |
-| #12 (cited) | 14:00:38 | fake-api | secondary | status 500, expected 200 |
-| #13 | 14:00:38 | fake-api | canary | ok in 0 ms |
-| #15 (cited) | 14:00:39 | fake-api | brain | status 500, expected 200 |
-| #16 | 14:00:41 | fake-api | brain | 200 in 16 ms |
+| #1 | 14:10:10 | fake-api | primary | 200 in 1 ms |
+| #3 | 14:10:15 | fake-api | primary | 200 in 1 ms |
+| #5 | 14:10:20 | fake-api | primary | 200 in 1 ms |
+| #7 | 14:10:25 | fake-api | primary | 200 in 1 ms |
+| #9 | 14:10:30 | fake-api | primary | 200 in 1 ms |
+| #11 (cited) | 14:10:35 | fake-api | primary | status 500, expected 200 |
+| #12 (cited) | 14:10:35 | fake-api | secondary | status 500, expected 200 |
+| #13 | 14:10:35 | fake-api | canary | ok in 0 ms |
+| #15 (cited) | 14:10:37 | fake-api | brain | status 500, expected 200 |
+| #16 | 14:10:39 | fake-api | brain | 200 in 15 ms |
 
 ## Why this is believed to be the cause
 
@@ -49,7 +49,7 @@ Result: POST http://127.0.0.1:8098/restart answered 200.
 
 ## What was confirmed
 
-- Probe #16: pass, 200 in 16 ms
+- Probe #16: pass, 200 in 15 ms
 
 Outcome: fixed: restart ran and probe #16 passed.
 
