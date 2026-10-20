@@ -160,6 +160,19 @@ class Rule4ThreeActionTiers(Base):
         self.assertEqual(spy.restarts, [{"command": ["true"]}])
         self.assertTrue(r2["outcome"].startswith("fixed"), r2["outcome"])
 
+    def test_waiting_action_runs_once_config_makes_it_low_tier(self):
+        self.w.target("site", stateless=False, restart={"command": ["unpause"]})
+        self.w.failure("site", "target")
+        spy = SpyExecutor()
+        b = self.w.brain(FakeProber({"site": [ERR500, ERR500, UP]}), executor=spy, live=True)
+        [r] = b.run_once()
+        self.assertEqual(r["outcome"], "awaiting approval")
+        self.w.conn.execute("UPDATE targets SET stateless = 1 WHERE name = 'site'")
+        [r2] = b.run_once()
+        self.assertEqual(spy.restarts, [{"command": ["unpause"]}])
+        self.assertEqual(r2["tier"], "low")
+        self.assertTrue(r2["outcome"].startswith("fixed"), r2["outcome"])
+
     def test_denied_medium_action_is_not_run(self):
         self.w.target("worker", restart={"command": ["true"]})
         self.w.failure("worker", "target")

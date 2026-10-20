@@ -37,7 +37,7 @@ Diagnosis is rule-based. If `--model` points at Ollama or the Anthropic API, the
 | Tier | Actions | Runs |
 |---|---|---|
 | low | re-probe, collect diagnostics, restart a target marked `stateless` | automatically (restarts only with `--live`) |
-| medium | restart a target that may hold state | after Approve on the dashboard |
+| medium | restart a target that may hold state | after Approve on the dashboard; an action still waiting runs on its own once warden.toml makes it low tier |
 | high | roll back a deployment | never; the report carries a recommendation and a rollback plan |
 
 A fix counts only when a probe taken after the action passes. The report names that probe by id. A restart that ran while the target still fails is reported as `not fixed`.

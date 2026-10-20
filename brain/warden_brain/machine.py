@@ -260,6 +260,8 @@ class Brain:
         p = actions.plan(ctx["out"]["verify"], ctx["out"]["diagnose"]["hypothesis"], ctx["target"])
         tier = p.get("tier") or "none"
         p["summary"] = f"{p['action']} at tier {tier}: {p['why']}"
+        if ctx.get("policy_note"):
+            p["summary"] += f" ({ctx['policy_note']})"
         return p, "act"
 
     def _act(self, ctx: dict):
@@ -330,7 +332,24 @@ class Brain:
         ).fetchone()
         if row is None:
             return None
+        event = dict(self.conn.execute("SELECT * FROM events WHERE id = ?", (incident["event_id"],)).fetchone())
+        event["detail"] = json.loads(event.get("detail") or "{}")
+        ctx = self._context(incident["id"], event)
+        ctx["cost"].update(json.loads(incident["cost"] or "{}"))
+        for t in self.conn.execute(
+            "SELECT state, output FROM transitions WHERE incident_id = ? ORDER BY id", (incident["id"],)
+        ):
+            ctx["out"][t["state"]] = json.loads(t["output"])
+
         decision = row["decision"]
+        if decision == "pending" and ctx["target"] is not None:
+            # The config may have changed since the request; if the action is now low tier, nobody needs to approve it.
+            now = actions.plan(ctx["out"]["verify"], ctx["out"]["diagnose"]["hypothesis"], ctx["target"])
+            if now.get("tier") == "low":
+                self.conn.execute("UPDATE approvals SET decision = 'approved', decided_at = ? WHERE id = ?",
+                                  (store.now_iso(), row["id"]))
+                ctx["policy_note"] = "warden.toml now marks this action low tier, so it runs without approval"
+                return self._drive(ctx, "decide")
         if decision == "pending":
             expired = self.conn.execute(
                 "SELECT ? < ?", (row["requested_at"], store.now_iso(-self.approval_ttl_hours * 3600))
@@ -340,14 +359,6 @@ class Brain:
             self.conn.execute("UPDATE approvals SET decision = 'expired', decided_at = ? WHERE id = ?",
                               (store.now_iso(), row["id"]))
             decision = "expired"
-        event = dict(self.conn.execute("SELECT * FROM events WHERE id = ?", (incident["event_id"],)).fetchone())
-        event["detail"] = json.loads(event.get("detail") or "{}")
-        ctx = self._context(incident["id"], event)
-        ctx["cost"].update(json.loads(incident["cost"] or "{}"))
-        for t in self.conn.execute(
-            "SELECT state, output FROM transitions WHERE incident_id = ? ORDER BY id", (incident["id"],)
-        ):
-            ctx["out"][t["state"]] = json.loads(t["output"])
         ctx["approval"] = decision
         return self._drive(ctx, "act")
 
