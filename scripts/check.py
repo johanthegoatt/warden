@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -24,6 +25,12 @@ def main() -> int:
     env = {**os.environ, "PYTHONPATH": os.pathsep.join(["." , "tests"])}
     ok = run(["cargo", "test", "--offline", "--quiet"], ROOT / "sensor")
     ok = run([sys.executable, "-m", "unittest", "discover", "-s", "tests"], ROOT / "brain", env) and ok
+    # The cloud sentinel needs tomllib (3.11+); the brain stays on 3.9.
+    py311 = [sys.executable] if sys.version_info >= (3, 11) else (["py", "-3.11"] if shutil.which("py") else None)
+    if py311:
+        ok = run(py311 + ["-m", "unittest", "test_sentinel"], ROOT / "cloud") and ok
+    else:
+        print("skipped cloud tests: no Python 3.11 found")
     print("all tests passed" if ok else "tests failed; nothing committed")
     return 0 if ok else 1
 
