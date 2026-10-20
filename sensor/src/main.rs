@@ -180,10 +180,19 @@ fn run(config_path: &Path, once: bool, no_dashboard: bool) -> ExitCode {
         );
     }
     println!("watching {} target(s) every {}s", enabled.len(), cfg.sensor.interval_secs);
+    let mut last_prune: Option<std::time::Instant> = None;
     loop {
         sup.tick();
         if let Ok(c) = log_conn.lock() {
             let _ = store::beat(&c, "sensor", &serde_json::json!({ "targets": enabled.len() }).to_string());
+            if last_prune.is_none_or(|t| t.elapsed() >= Duration::from_secs(3600)) {
+                match store::prune(&c, cfg.sensor.retention_days) {
+                    Ok(n) if n > 0 => println!("pruned {n} probe(s) older than {} days", cfg.sensor.retention_days),
+                    Ok(_) => {}
+                    Err(e) => eprintln!("pruning old probes failed: {e}"),
+                }
+                last_prune = Some(std::time::Instant::now());
+            }
         }
         std::thread::sleep(Duration::from_secs(1));
     }

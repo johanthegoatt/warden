@@ -2,12 +2,13 @@
 # environment (WARDEN_TOKEN, ANTHROPIC_API_KEY), never in this file.
 
 [sensor]
-interval_secs = 30
+interval_secs = 15
 db = "warden.db"
 dashboard = "127.0.0.1:7878"
 canary = "1.1.1.1:443"
 timeout_ms = 8000
 baseline_window = 60
+retention_days = 7
 
 [[target]]
 name = "discord-api"

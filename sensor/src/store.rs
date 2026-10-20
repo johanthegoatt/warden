@@ -106,6 +106,15 @@ pub fn beat(conn: &Connection, component: &str, note: &str) -> rusqlite::Result<
     Ok(())
 }
 
+/// Deletes probes older than `days`. Probes an incident cites stay findable
+/// in its report, which holds its own copy of the evidence table.
+pub fn prune(conn: &Connection, days: u32) -> rusqlite::Result<usize> {
+    conn.execute(
+        "DELETE FROM probes WHERE ts < strftime('%Y-%m-%dT%H:%M:%fZ', 'now', ?1)",
+        params![format!("-{days} days")],
+    )
+}
+
 /// Latest primary result per target, used to judge dependencies.
 pub fn latest_ok(conn: &Connection, target: &str) -> rusqlite::Result<Option<bool>> {
     let mut stmt = conn.prepare_cached(
@@ -127,4 +136,25 @@ pub fn recent_latencies(conn: &Connection, target: &str, limit: usize) -> rusqli
     )?;
     let rows = stmt.query_map(params![target, limit as i64], |r| r.get(0))?;
     rows.collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn prune_drops_only_old_probes() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(SCHEMA).unwrap();
+        conn.execute(
+            "INSERT INTO probes (ts, target, path, ok) VALUES ('2020-01-01T00:00:00.000Z', 'a', 'primary', 1)",
+            [],
+        )
+        .unwrap();
+        let fresh = crate::probe::Outcome { ok: true, status: Some(200), latency_ms: Some(5.0), error: None, probe_error: false };
+        record_probe(&conn, "a", "primary", &fresh).unwrap();
+        assert_eq!(prune(&conn, 7).unwrap(), 1);
+        let left: i64 = conn.query_row("SELECT COUNT(*) FROM probes", [], |r| r.get(0)).unwrap();
+        assert_eq!(left, 1);
+    }
 }

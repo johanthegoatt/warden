@@ -29,6 +29,9 @@ pub struct SensorSettings {
     pub timeout_ms: u64,
     #[serde(default = "default_window")]
     pub baseline_window: usize,
+    /// Probe rows older than this are deleted, so a long-running sensor stays small.
+    #[serde(default = "default_retention")]
+    pub retention_days: u32,
 }
 
 impl Default for SensorSettings {
@@ -40,6 +43,7 @@ impl Default for SensorSettings {
             canary: default_canary(),
             timeout_ms: default_timeout(),
             baseline_window: default_window(),
+            retention_days: default_retention(),
         }
     }
 }
@@ -61,6 +65,9 @@ fn default_timeout() -> u64 {
 }
 fn default_window() -> usize {
     60
+}
+fn default_retention() -> u32 {
+    7
 }
 fn default_true() -> bool {
     true
@@ -173,6 +180,9 @@ fn validate(config: &Config) -> Result<(), ConfigError> {
             "sensor.interval_secs is {}; use 5 or more so probes do not hammer the targets",
             config.sensor.interval_secs
         ));
+    }
+    if config.sensor.retention_days == 0 {
+        problems.push("sensor.retention_days must be at least 1".into());
     }
     if config.sensor.baseline_window < 10 {
         problems.push("sensor.baseline_window must be at least 10 samples".into());
