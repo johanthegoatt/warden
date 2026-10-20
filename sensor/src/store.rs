@@ -1,6 +1,6 @@
 use crate::config::Target;
 use crate::probe::Outcome;
-use rusqlite::{Connection, params};
+use rusqlite::{Connection, OptionalExtension, params};
 use std::path::Path;
 use std::time::Duration;
 
@@ -115,6 +115,23 @@ pub fn prune(conn: &Connection, days: u32) -> rusqlite::Result<usize> {
     )
 }
 
+/// The fault key of an unresolved failure, so a restarted sensor does not raise it twice.
+pub fn open_fault(conn: &Connection, target: &str) -> rusqlite::Result<Option<String>> {
+    conn.query_row(
+        "SELECT kind, fault, COALESCE(culprit, '') FROM events
+         WHERE target = ?1 AND kind IN ('failure', 'recovered') ORDER BY id DESC LIMIT 1",
+        params![target],
+        |r| {
+            let kind: String = r.get(0)?;
+            let fault: String = r.get(1)?;
+            let culprit: String = r.get(2)?;
+            Ok((kind == "failure").then(|| format!("{fault}:{culprit}")))
+        },
+    )
+    .optional()
+    .map(Option::flatten)
+}
+
 /// Latest primary result per target, used to judge dependencies.
 pub fn latest_ok(conn: &Connection, target: &str) -> rusqlite::Result<Option<bool>> {
     let mut stmt = conn.prepare_cached(
@@ -156,5 +173,17 @@ mod tests {
         assert_eq!(prune(&conn, 7).unwrap(), 1);
         let left: i64 = conn.query_row("SELECT COUNT(*) FROM probes", [], |r| r.get(0)).unwrap();
         assert_eq!(left, 1);
+    }
+
+    #[test]
+    fn open_fault_survives_a_restart_until_recovery() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(SCHEMA).unwrap();
+        assert_eq!(open_fault(&conn, "a").unwrap(), None);
+        record_event(&conn, "a", "failure", "target", Some("a"), None, &serde_json::json!({})).unwrap();
+        record_event(&conn, "a", "drift", "target", Some("a"), None, &serde_json::json!({})).unwrap();
+        assert_eq!(open_fault(&conn, "a").unwrap().as_deref(), Some("target:a"));
+        record_event(&conn, "a", "recovered", "none", None, None, &serde_json::json!({})).unwrap();
+        assert_eq!(open_fault(&conn, "a").unwrap(), None);
     }
 }

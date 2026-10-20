@@ -66,7 +66,7 @@ cd brain && python -m warden_brain --model none
 
 `check` probes every target once through both paths and prints what each one saw. `run` probes forever and serves the dashboard at http://127.0.0.1:7878. The brain runs dry until you pass `--live`. `--model ollama:llama3.2` (the default) or `--model anthropic:claude-haiku-5-5` turns on model wording. The API key goes in `ANTHROPIC_API_KEY`. If `WARDEN_TOKEN` is set, the dashboard asks for it before it records an approval.
 
-To keep it running in the background, the watchdog starts the sensor and the brain with no console window. It restarts either one if it exits, backing off from 5 seconds to 5 minutes, and puts a shortcut in the Windows Startup folder so it comes back after every logon. Logs go to `logs/` and rotate at 5 MB. Probes older than `retention_days` (7 by default) are pruned every hour.
+To keep it running in the background, the watchdog starts the sensor and the brain with no console window. It restarts either one if it exits, backing off from 5 seconds to 5 minutes, and puts a shortcut in the Windows Startup folder so it comes back after every logon. Logs go to `logs/` and rotate at 5 MB. Reports from the live targets go to `incidents/`, so `reports/` keeps only the demo samples. Probes older than `retention_days` (7 by default) are pruned every hour.
 
 ```bash
 python scripts/watchdog.py install

@@ -58,7 +58,10 @@ impl Loop {
         {
             baseline.push(l);
         }
-        let mut health = Health::Healthy;
+        let mut health = match store::open_fault(&conn, &self.target.name).expect("cannot read past events") {
+            Some(key) => Health::Failing(key),
+            None => Health::Healthy,
+        };
         let mut drifting = false;
         let mut done = 0;
         loop {
