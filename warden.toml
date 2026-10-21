@@ -38,12 +38,13 @@ expected_status = 405
 latency_budget_ms = 3500
 depends_on = ["icarus-site", "discord-api"]
 
-# NexusOnline appends every webhook payload to its outbox, so the file's age is its pulse.
+# NexusOnline rewrites status.json after every source poll, so the file's age is its pulse.
+# (The outbox only changes when an alert fires, which can be hours apart.)
 [[target]]
 name = "nexusonline-sender"
 kind = "heartbeat"
-path = "../nexusonline/data/outbox.jsonl"
-max_age_secs = 3600
+path = "../nexusonline/data/status.json"
+max_age_secs = 300
 latency_budget_ms = 50
 depends_on = ["discord-api"]
 
