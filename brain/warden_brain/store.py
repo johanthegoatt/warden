@@ -17,7 +17,8 @@ def now_iso(offset_seconds: float = 0.0) -> str:
 
 
 def connect(path: str | Path) -> sqlite3.Connection:
-    conn = sqlite3.connect(str(path), timeout=5.0, isolation_level=None)
+    # 81 sensor threads share this file; wait for the write lock instead of failing fast.
+    conn = sqlite3.connect(str(path), timeout=30.0, isolation_level=None)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
@@ -88,7 +89,7 @@ def recent_probes(conn: sqlite3.Connection, names: list, minutes: float = 15.0, 
     marks = ",".join("?" for _ in names)
     floor = max(now_iso(-minutes * 60), since or "")
     rows = conn.execute(
-        f"SELECT * FROM probes WHERE target IN ({marks}) AND ts > ? ORDER BY id DESC LIMIT ?",
+        f"SELECT * FROM probes WHERE target IN ({marks}) AND ts >= ? ORDER BY id DESC LIMIT ?",
         (*names, floor, limit),
     ).fetchall()
     return [dict(r) for r in reversed(rows)]

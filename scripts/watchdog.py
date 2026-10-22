@@ -136,6 +136,11 @@ def run() -> int:
         Child("brain", [sys.executable, "-m", "warden_brain", "--model", os.environ.get("WARDEN_MODEL", "none"),
                         "--interval", "10", "--live", "--provider", "vercel:neonices-projects", "--reports", str(ROOT / "incidents")], ROOT / "brain"),
     ]
+    # Apps Warden also keeps alive: they restart with the same backoff and come back at logon.
+    nexus = ROOT.parent / "nexusonline"
+    node = shutil.which("node")
+    if (nexus / "src" / "index.js").exists() and node and os.environ.get("WARDEN_NEXUS", "1") != "0":
+        children.append(Child("nexusonline", [node, "--disable-warning=ExperimentalWarning", "src/index.js"], nexus))
     tunnel = cloudflared()
     if tunnel:
         children.append(Child("tunnel", [tunnel, "tunnel", "--no-autoupdate", "--url", "http://127.0.0.1:7878"], ROOT))
@@ -234,7 +239,7 @@ def status() -> int:
     print(f"starts at logon: {'yes' if shortcut().exists() else 'no'}")
     if pid and LINKFILE.exists():
         print(f"open from anywhere: {LINKFILE.read_text(encoding='utf-8').strip()}")
-    for name in ("watchdog", "sensor", "brain", "tunnel"):
+    for name in ("watchdog", "sensor", "brain", "nexusonline", "tunnel"):
         path = LOGS / f"{name}.log"
         if path.exists():
             lines = path.read_text(encoding="utf-8", errors="replace").splitlines()[-4:]

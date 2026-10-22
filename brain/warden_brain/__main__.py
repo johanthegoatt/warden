@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sqlite3
 import sys
 import time
 from pathlib import Path
@@ -47,9 +48,13 @@ def main(argv=None) -> int:
                   provider_every=max(1, round(60 / args.interval)))
     print(f"brain: {'LIVE' if args.live else 'dry run'}, model {args.model}, db {args.db}")
     while True:
-        for r in brain.run_once():
-            if r.get("incident_id") or r.get("verdict") != "healthy":
-                print(json.dumps(r, default=str))
+        try:
+            for r in brain.run_once():
+                if r.get("incident_id") or r.get("verdict") != "healthy":
+                    print(json.dumps(r, default=str))
+        except sqlite3.OperationalError as e:
+            # A long lock is a busy moment, not a reason to die; events stay unclaimed for the next pass.
+            print(f"brain: pass skipped, database busy: {e}", file=sys.stderr)
         if args.once:
             return 0
         time.sleep(args.interval)
